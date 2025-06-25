@@ -16,6 +16,10 @@ const COMMIT_WINDOW_MS = 5_000;   // after first-second nonce
 const DELTA_BATCH = 1024;
 const STORAGE_TOKEN = window.env?.WEB3_STORAGE_TOKEN || '';
 
+// dynamic sampling cap (kHz) received from shard mixer; default 250 kHz converted
+let samplingCapKHz = 250;
+let sampleDelayUs = 1000 / samplingCapKHz; // target microseconds between samples
+
 // The backend API base (served by FastAPI miniapp)
 const API = window.chromancyAPI ?? new window.ChromomancyAPI('');
 
@@ -41,8 +45,14 @@ async function sampleDeltas(count = DELTA_BATCH) {
     const cur = nowMs();
     deltas[i] = Math.floor((cur - prev) * 1e6); // µs diff for high dynamic range
     prev = cur;
-    // Yield to event loop minimally
-    await new Promise(r => requestAnimationFrame(r));
+    // Yield based on current cap to avoid oversampling
+    const delay = sampleDelayUs / 1000; // convert to ms
+    if (delay > 16) {
+      // coarse wait using rAF when very slow
+      await new Promise(r => requestAnimationFrame(r));
+    } else if (delay > 1) {
+      await sleep(delay);
+    } // else busy-loop (no extra wait) – browser timer granularity will still dominate
   }
   return deltas;
 }
@@ -90,10 +100,17 @@ export async function startEntropySession({ userId, enabled = true }) {
     // Sign CID via WebAuthn (RS256)
     const signature = await signWithWebAuthn(cid);
 
-    await API.request('/reveal', {
+    const revealResp = await API.request('/reveal', {
       method: 'POST',
       body: JSON.stringify({ epoch, user_id: userId, cid, signature })
     });
+
+    // Update sampling cap if server responded with new cap_khz
+    if (revealResp?.cap_khz) {
+      samplingCapKHz = revealResp.cap_khz;
+      sampleDelayUs = 1000 / samplingCapKHz;
+      console.info(`Updated sampling cap to ${samplingCapKHz} kHz`);
+    }
 
     // Sleep remainder of epoch
     const nextEpochStart = (epoch + 1) * EPOCH_LENGTH_MS;
