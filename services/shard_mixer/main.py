@@ -35,6 +35,7 @@ from pydantic import BaseModel, Field
 
 BASE_CAP_KHZ = 250
 HONEST_ENTROPY_FRACTION_MIN = 0.40
+COMPRESSION_CUTOFF = 0.80  # reject traces with compression_ratio ≥ this
 
 # ---------------------------------------------------------------------------
 # Storage path – mount a docker volume at /data for persistence
@@ -183,16 +184,18 @@ async def focus_reveal(payload: RevealPayload = Body(...)) -> Dict[str, int]:
     if payload.metrics.sample_count < 256:
         raise HTTPException(status_code=400, detail="trace too small")
 
+    # Reject low-variance traces (high compressibility)
+    if payload.metrics.compression_ratio >= COMPRESSION_CUTOFF:
+        raise HTTPException(status_code=400, detail="low entropy – compression_ratio too high")
+
     q = payload.metrics.quality_score()
     cap_khz = int(round(BASE_CAP_KHZ * (q ** 2)))
     store_reveal(payload, q, cap_khz)
 
     # append to epoch log
     log_path = DB_DIR / f"epoch_{payload.epoch}.log"
-    log_path.write_text(
-        f"{time.time():.0f}\t{payload.operator_id}\t{q:.3f}\t{cap_khz}\n",
-        append=True if log_path.exists() else False,
-    )
+    log_line = f"{time.time():.0f}\t{payload.operator_id}\t{payload.metrics.compression_ratio:.3f}\t{q:.3f}\t{cap_khz}\n"
+    log_path.write_text(log_line, append=True if log_path.exists() else False)
 
     if q < HONEST_ENTROPY_FRACTION_MIN:
         # Emit VOID pulse marker
