@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  shard0:
+    build:
+      context: ../services/shard_mixer
+    container_name: shard0
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - shard0_data:/data
+    ports:
+      - "8000:8000"
+    command: ["python", "main.py"]
+
+volumes:
+  shard0_data:
+    driver: local 
