@@ -1,0 +1,170 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectName>PrdCore</ProjectName>
+    <ProjectGuid>{4D35FC8E-1A57-4375-B856-17F2214171B7}</ProjectGuid>
+    <RootNamespace>PsigPrd</RootNamespace>
+    <Keyword>Win32Proj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.30128.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Configuration)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Configuration)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>..\..\FTDI\FTDI CDM 2.08.24;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;PSIGPRD_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <TreatWarningAsError>true</TreatWarningAsError>
+    </ClCompile>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+      <UseLibraryDependencyInputs>true</UseLibraryDependencyInputs>
+    </ProjectReference>
+    <Link>
+      <AdditionalDependencies>Ws2_32.lib;FTD2XX.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)PrdCore.dll</OutputFile>
+      <AdditionalLibraryDirectories>..\..\FTDI\FTDI CDM 2.08.24\i386;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\FTDI\FTDI CDM 2.08.24;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;PSIGPRD_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>Ws2_32.lib;FTd2XX.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)PrdCore.dll</OutputFile>
+      <AdditionalLibraryDirectories>..\..\FTDI\FTDI CDM 2.08.24\i386;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="BackProp.cpp" />
+    <ClCompile Include="BpAnnStreamFilters.cpp" />
+    <ClCompile Include="BpZAnalogFlipMultiPrd.cpp" />
+    <ClCompile Include="BpZAnalogFlipPrd.cpp" />
+    <ClCompile Include="Buffer.cpp" />
+    <ClCompile Include="FtdiRng.cpp" />
+    <ClCompile Include="FtdiRngArray.cpp" />
+    <ClCompile Include="IBuffer.cpp" />
+    <ClCompile Include="InetPrd.cpp" />
+    <ClCompile Include="IPrdGen.cpp" />
+    <ClCompile Include="IRng.cpp" />
+    <ClCompile Include="LfsrCorrector.cpp" />
+    <ClCompile Include="Logger.cpp" />
+    <ClCompile Include="LpFilter.cpp" />
+    <ClCompile Include="LpSpeedFilter.cpp" />
+    <ClCompile Include="MersenneTwister.cpp" />
+    <ClCompile Include="MilliTimer.cpp" />
+    <ClCompile Include="PcqngCore.cpp" />
+    <ClCompile Include="PcqngRng.cpp" />
+    <ClCompile Include="PcqngTargetGen.cpp" />
+    <ClCompile Include="PrdComparator.cpp" />
+    <ClCompile Include="PrdObject.cpp" />
+    <ClCompile Include="PseudoRng.cpp" />
+    <ClCompile Include="PrdCore.cpp" />
+    <ClCompile Include="Stats.cpp" />
+    <ClCompile Include="TwisterRng.cpp" />
+    <ClCompile Include="xmlParser.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="BackProp.H" />
+    <ClInclude Include="BoundedWalkGen.hpp" />
+    <ClInclude Include="BpAnnStreamFilters.hpp" />
+    <ClInclude Include="BpZAnalogFlipMultiPrd.hpp" />
+    <ClInclude Include="BpZAnalogFlipPrd.hpp" />
+    <ClInclude Include="Buffer.hpp" />
+    <ClInclude Include="FtdiRng.hpp" />
+    <ClInclude Include="FtdiRngArray.hpp" />
+    <ClInclude Include="IBuffer.hpp" />
+    <ClInclude Include="InetPrd.hpp" />
+    <ClInclude Include="IPrdGen.hpp" />
+    <ClInclude Include="IRng.hpp" />
+    <ClInclude Include="ITargetGen.hpp" />
+    <ClInclude Include="LfsrCorrector.hpp" />
+    <ClInclude Include="Logger.hpp" />
+    <ClInclude Include="LpFilter.hpp" />
+    <ClInclude Include="LpSpeedFilter.hpp" />
+    <ClInclude Include="MersenneTwister.hpp" />
+    <ClInclude Include="MilliTimer.hpp" />
+    <ClInclude Include="PcqngCore.hpp" />
+    <ClInclude Include="PcqngRng.hpp" />
+    <ClInclude Include="PcqngTargetGen.hpp" />
+    <ClInclude Include="PrdComparator.hpp" />
+    <ClInclude Include="PrdObject.h" />
+    <ClInclude Include="PseudoRng.hpp" />
+    <ClInclude Include="PrdCore.h" />
+    <ClInclude Include="Stats.hpp" />
+    <ClInclude Include="stdint.h" />
+    <ClInclude Include="TwisterRng.hpp" />
+    <ClInclude Include="xmlParser.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="xmlParserReadMe.txt" />
+    <None Include="PsigPrdConfig.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resource\resource.res" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

@@ -33,6 +33,7 @@ from telebot.types import (
     InlineKeyboardButton,
     CallbackQuery,
     ChatMemberUpdated,
+    WebAppInfo,
 )
 import logging
 
@@ -67,12 +68,19 @@ def init_db():
                 window_start TEXT,
                 window_end TEXT,
                 daily_count INTEGER DEFAULT 0,
-                tz_offset INTEGER DEFAULT NULL
+                tz_offset INTEGER DEFAULT NULL,
+                muted_until TEXT DEFAULT NULL
             )"""
     )
     # Ensure tz_offset exists even on older DBs
     try:
         cur.execute("ALTER TABLE users ADD COLUMN tz_offset INTEGER DEFAULT NULL")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+    
+    # Ensure muted_until exists even on older DBs
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN muted_until TEXT DEFAULT NULL")
     except sqlite3.OperationalError:
         pass  # column already exists
     cur.execute(
@@ -265,18 +273,35 @@ def tz_keyboard():
 def handle_start(m: Message):
     cfg = USERS.setdefault(m.chat.id, UserConfig(chat_id=m.chat.id))
 
+    # Always greet user personally
+    first_name = (m.from_user.first_name or "there") if m.from_user else "there"
+
+    # Mini-app button (always shown)
+    webapp_keyboard = InlineKeyboardMarkup()
+    webapp_button = InlineKeyboardButton(
+        "🌀 Open Chronomancy App",
+        web_app=WebAppInfo(url="https://chronomancy.app"),
+    )
+    webapp_keyboard.add(webapp_button)
+
     if cfg.tz_offset is None:
-        bot.send_message(
-            m.chat.id,
-            "Hi 👋 I'll send you random Chronomancy pings.\nChoose your time-zone:",
-            reply_markup=tz_keyboard(),
-        )
-    else:
+        # No timezone yet – encourage user to open the Mini App which will auto-detect it
         bot.reply_to(
             m,
-            """<b>Chronomancy is running!</b> 🌀
+            f"Hi, <b>{first_name}</b>! 👋\n\nWelcome to <b>Chronomancy</b>. Tap the button below to complete setup. "
+            "We'll automatically detect your timezone and start sending pings.",
+            reply_markup=webapp_keyboard,
+        )
+    else:
+        # Create Mini App button
+        bot.reply_to(
+            m,
+            f"""<b>Chronomancy is running, {first_name}!</b> 🌀
 
-<b>Core Commands:</b>
+<b>🎯 Quick Access:</b>
+👆 Tap the button above to open the full Chronomancy interface
+
+<b>Bot Commands:</b>
 /window - Configure alarm schedule
 /profile - Your settings and stats  
 /reports - Recent anomaly reports
@@ -293,6 +318,7 @@ def handle_start(m: Message):
 /global - View network statistics
 
 Reply to any ping message to log anomalies!""",
+            reply_markup=webapp_keyboard,
         )
 
 
@@ -330,7 +356,20 @@ def cb_tz_select(call: CallbackQuery):
     cfg.schedule_alarms()
     bot.answer_callback_query(call.id, text=f"Timezone set to UTC{offset:+d}")
     bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=None)
-    bot.send_message(chat_id, "✅ All set! I'll start sending pings. Use /settings for tweaks.")
+    
+    # Create Mini App button for new users
+    webapp_keyboard = InlineKeyboardMarkup()
+    webapp_button = InlineKeyboardButton(
+        "🌀 Open Chronomancy App", 
+        web_app=WebAppInfo(url="https://chronomancy.app")
+    )
+    webapp_keyboard.add(webapp_button)
+    
+    bot.send_message(
+        chat_id, 
+        "✅ All set! I'll start sending pings.\n\n🎯 Tap the button above to access the full Chronomancy interface with advanced features!",
+        reply_markup=webapp_keyboard
+    )
 
 @bot.message_handler(commands=["window"])
 def handle_window(m: Message):
@@ -777,18 +816,44 @@ def _cache_ping(chat_id: int, msg_id: int, ping_id: int):
 # ---------------------------------------------------------------------------
 
 def send_ping(chat_id: int, text: str, ping_type: str, user_id: Optional[int] = None) -> None:
+    """Send a ping message and record it in the database.
+    
+    According to Scott Wilber's methodology, pings should provide immediate
+    access to anomaly reporting interfaces for optimal temporal synchronization.
+    """
     try:
-        msg = bot.send_message(chat_id, text)
-    except Exception as exc:
-        logger.warning("Failed to send %s ping to %s: %s", ping_type, chat_id, exc)
-        return
-    with CONN:
-        cur = CONN.execute(
-            "INSERT INTO pings(chat_id, user_id, ping_type, sent_msg_id, sent_at_utc) VALUES (?,?,?,?,?)",
-            (chat_id, user_id, ping_type, msg.message_id, dt.datetime.utcnow().isoformat()),
+        # Create Mini App button for quick access to anomaly reporting
+        webapp_keyboard = InlineKeyboardMarkup()
+        webapp_button = InlineKeyboardButton(
+            "📝 Open Anomaly Report", 
+            web_app=WebAppInfo(url="https://chronomancy.app")
         )
-        ping_id = cur.lastrowid
-    _cache_ping(chat_id, msg.message_id, ping_id)
+        webapp_keyboard.add(webapp_button)
+        
+        sent_msg = bot.send_message(chat_id, text, reply_markup=webapp_keyboard)
+        
+        # Record in database
+        with CONN:
+            cur = CONN.execute(
+                "INSERT INTO pings(chat_id, user_id, ping_type, sent_msg_id, sent_at_utc) VALUES (?,?,?,?,?)",
+                (chat_id, user_id or chat_id, ping_type, sent_msg.message_id, dt.datetime.utcnow().isoformat())
+            )
+            ping_id = cur.lastrowid
+            _cache_ping(chat_id, sent_msg.message_id, ping_id)
+    except Exception as e:
+        logger.error(f"Failed to send ping to {chat_id}: {e}")
+        # Fallback without keyboard
+        try:
+            sent_msg = bot.send_message(chat_id, text)
+            with CONN:
+                cur = CONN.execute(
+                    "INSERT INTO pings(chat_id, user_id, ping_type, sent_msg_id, sent_at_utc) VALUES (?,?,?,?,?)",
+                    (chat_id, user_id or chat_id, ping_type, sent_msg.message_id, dt.datetime.utcnow().isoformat())
+                )
+                ping_id = cur.lastrowid
+                _cache_ping(chat_id, sent_msg.message_id, ping_id)
+        except Exception as e2:
+            logger.error(f"Failed to send fallback ping to {chat_id}: {e2}")
 
 # ---------------------------------------------------------------------------
 # Utility to track group membership

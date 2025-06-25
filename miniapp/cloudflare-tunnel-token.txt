@@ -1,0 +1,4 @@
+eyJhIjoiMjUyY2VhYjUxYzhlZmE2YWVlNThjODFiMDk1NmM1ZWIiLCJ0IjoiYmQ0MDNhMTYtZGIwYS00MDkxLWJhYjMtNzFmOTg1ZDc3NDJhIiwicyI6Ik1UQTJORGt3TTJNdFpUSTJaaTAwWkRZeExXRXpObVl0TmpNek9EazBOamN6TlRJMiJ9
+
+# Usage: cloudflared tunnel --token [token above]
+# Or for service install (requires admin): cloudflared.exe service install [token above] 

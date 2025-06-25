@@ -19,7 +19,7 @@ project:
       - "Samim"
       - "Kat"
       - "Mat1e"
-    last_updated: "2025-06-24T13:47:00Z"
+    last_updated: "2025-06-25T11:43:00Z"
     license: "CC-BY-SA 4.0"
 
 # -----------------------------------------------------------------------------
@@ -63,7 +63,7 @@ design_principles:
   hype_reset: "Launching as a fresh brand sidesteps legacy inertia and reignites curiosity."
 
 # -----------------------------------------------------------------------------
-# User-Experience Guidelines
+# User Experience Flow & Engagement Strategy
 # -----------------------------------------------------------------------------
 ux_guidelines:
   night_mode_recommendation: "Encourage focus on strange sounds when alarms ring in low visibility."
@@ -71,6 +71,69 @@ ux_guidelines:
     order: [low_visibility, strange_sounds, unexpected_encounters, perceived_risk]
   content_prompting: "Immediately surface share sheet or social feed on alarm acknowledge."
   safety_opt_out: "Allow users to snooze/disable alarms while driving or in meetings."
+
+engagement_strategy:
+  initial_experience: |
+    Users receive one initial ping to experience the core loop. If they leave the
+    app installed, subsequent random pings occur infrequently to maintain
+    engagement without annoyance—just enough to generate strange field effects.
+  retention_balance: |
+    Editorial Note: Better to annoy some people with recurring alarms than have
+    20 million people use it once. The goal is sustained temporal attention
+    disruption, not viral flash-in-the-pan usage.
+
+# -----------------------------------------------------------------------------
+# Ping Mechanics & Temporal Architecture
+# -----------------------------------------------------------------------------
+ping_system:
+  daily_ping_quota:
+    description: "Users control how many pings they receive per day"
+    interface: |
+      You are about to receive [2] pings today. Add +1. Remove -1.
+      Mute for...[  ]
+    controls:
+      - "Add +1 button to increase daily ping count"
+      - "Remove -1 button to decrease daily ping count"
+      - "Mute for [duration] to temporarily pause all pings"
+      - "Queue management for users who want more pings on demand"
+
+  synchronous_ping_generation:
+    description: |
+      First ping of each day follows synchronous logic to create global coordination
+      while maintaining individual user preferences.
+    algorithm: |
+      1. Generate random time during whole day using current date as seed
+      2. Check if time falls outside user's available timeframe (e.g., earlier than now)
+      3. If out of range OR sync ping already generated today:
+         - Generate simple random ping within user's available timerange (now...end of day)
+      4. Otherwise: Use synchronous time for global coordination
+    fallback_logic: "Personal random ping generation when sync ping is invalid"
+
+  exclusion_windows:
+    description: "User-defined periods when pings are blocked for safety/convenience"
+    implementation: |
+      Simpler than complex scheduling: users send 'mute for an hour' commands
+      when entering unsafe situations (driving, meetings, etc.)
+
+# -----------------------------------------------------------------------------
+# Temporal Synchronization Theory
+# -----------------------------------------------------------------------------
+synchronization_theory:
+  butterfly_effect_limitations: |
+    Traditional butterfly effect only affects variables in equations, not the
+    equations themselves. Random deviations typically cancel each other out—
+    when flipping 100 coins, approximately 50 will be heads.
+  
+  synchronized_disruption: |
+    When multiple deviations are synchronized (e.g., 10 coins flipped at the same
+    moment globally), the predictability breaks down. This disrupts the collective
+    attractor equation by making the pattern itself unstable.
+  
+  collective_field_effects: |
+    Date-seeded synchronous pings create an illusion of bigger community while
+    serving deeper purpose: disrupting collective temporal patterns through
+    coordinated attention shifts. This generates field effects beyond individual
+    butterfly effects.
 
 # -----------------------------------------------------------------------------
 # Theory Stack
@@ -85,6 +148,8 @@ theory:
       detail: "Train users to feel patterns, cycles, and retro-linkages in personal timelines."
     - name: "Holistics & Retrocausality"
       detail: "Position synchronicity as experiential proof of non-linear time."
+    - name: "Collective Attractor Disruption"
+      detail: "Synchronized temporal attention shifts destabilize predictable pattern equations."
   hype_context: |
     Pandemic lockdowns birthed Randonautica through spatial hunger; geopolitical
     stress now shifts the collective craving toward agency over time.  Claiming
@@ -109,8 +174,16 @@ features:
       Users write notes that are surfaced at a later alarm.  Delivery timing can be
       exact-next or probabilistic to cultivate retrocausal curiosity.
   quantum_rng_optional: "Option to augment with QRNG (e.g., Temporal) for added mystique."
-  challenges: "Periodic prompts like 'photograph the nearest random object.'"
+  challenges: 
+    description: "Periodic prompts like 'photograph the nearest random object.'"
+    community_curation: "Users can vote for challenges to be added to the system."
+    cross_referencing: |
+      Challenges added later help find connections between user experiences and
+      other people's reports, creating reference networks between anomaly reports.
   sigil_embedding: "Magickal glyphs encoded in the binary to diffuse across devices."
+  social_integration:
+    description: "Links to popular social media for easy posting of anomaly observations"
+    platforms: "Direct integration with major social platforms for frictionless sharing"
 
 # -----------------------------------------------------------------------------
 # Surprise Amplifiers (UX Heuristics)
@@ -135,15 +208,38 @@ implementation:
   content_sharing:
     default_platforms: ["TikTok", "Instagram", "Threads"]
     mechanism: "Deep-link from alarm toast to share composer."
+  
+  ping_queue_management:
+    daily_quota_interface: |
+      Simple increment/decrement controls for daily ping count with real-time
+      preview of next ping schedule.
+    mute_functionality: |
+      Temporary mute commands rather than complex scheduling interfaces—
+      optimized for spontaneous safety needs.
+
+# -----------------------------------------------------------------------------
+# Platform Evolution: Telegram to Mini App
+# -----------------------------------------------------------------------------
+platform_strategy:
+  current_implementation: "Telegram bot with comprehensive ping scheduling and anomaly tracking"
+  evolution_path: "Migration to Telegram Mini App for richer user interface"
+  mini_app_advantages:
+    - "Visual timeline of anomaly detections"
+    - "Interactive setup for ping windows"
+    - "Rich media viewing of captured anomalies"
+    - "Group synchronization visualizations"
+    - "Future-self message management interface"
+  backend_continuity: "Bot handles scheduling/pinging; Mini App provides UI layer"
 
 # -----------------------------------------------------------------------------
 # Deployment & Roadmap
 # -----------------------------------------------------------------------------
 roadmap:
-  phase_1: "Prototype iOS & Android in test-flight channels — focus on alarm accuracy."
-  phase_2: "Closed beta with memetic seeders to validate synchronicity engagement."
-  phase_3: "Public launch accompanied by ARG-style marketing drop."
-  phase_4: "Quantum RNG & sigil update pending user feedback."
+  phase_1: "Telegram bot prototype with full ping system and anomaly tracking"
+  phase_2: "Telegram Mini App interface development"
+  phase_3: "Closed beta with memetic seeders to validate synchronicity engagement"
+  phase_4: "Public launch accompanied by ARG-style marketing drop"
+  phase_5: "Quantum RNG & sigil update pending user feedback"
 
 # -----------------------------------------------------------------------------
 # Canonical Truth Clause
@@ -151,3 +247,122 @@ roadmap:
 # Any future documentation must reference or extend this canon.yaml. Divergence
 # is permissible only via explicit amendment blocks reviewed and approved by the
 # Chronomancy editorial collective (🏵️y e s h🏵️, d0ublezer0, Samim, Kat, Mat1e).
+
+# -----------------------------------------------------------------------------
+# Entropy Architecture (RNG Stack)
+# -----------------------------------------------------------------------------
+entropy_and_rng:
+  justification: |
+    Editorial Note (🏵️y e s h🏵️): "Deterministic π-seeds are elegant, but the
+    magic feels deeper when we let the universe wiggle the dice itself."
+  sources:
+    - id: "PI_SEED"
+      title: "π-seed (date-deterministic)"
+      description: "The existing default – reproducible daily seed based on digits of π."
+    - id: "CURBY"
+      title: "Curby Quantum Beacon"
+      description: |
+        512-bit SHA-512 pulses from the CU-Boulder randomness beacon
+        (<https://random.colorado.edu/>) with status codes per spec
+        <https://random.colorado.edu/usage/payloads-status-codes>.
+        Fetched hourly, errors fall back to π-seed.
+    - id: "MIXED"
+      title: "π↔Curby Interleaved (loss-less)"
+      description: |
+        Loss-less <bit-interleaving combiner> that alternates single bits from
+        π-seed and Curby beacon (a1 b1 a2 b2 …).  This preserves any original
+        bias (Scott Wilber, *Bias Amplification* doctrine) while doubling bit
+        rate.  Default for newcomers.
+    - id: "QRNG_DAEMON"
+      title: "Local QRNG-daemon"
+      description: |
+        Raw quantum bits streamed from the user's on-prem QRNG-daemon service
+        (e.g., http://127.0.0.1:41173/api/v1/bits).  Provides low-latency,
+        high-bandwidth entropy; bias untouched.
+    - id: "MIXED_QRNG"
+      title: "π↔QRNG Interleaved"
+      description: "Loss-less bit-interleaving of π-seed with local QRNG-daemon."
+    - id: "PCQNG"
+      title: "PCQNG Temporal Jitter RNG"
+      description: |
+        Legacy temporal RNG originally shipped with ME Trainer (2020).  It
+        derives entropy from 1 kHz cycle-to-cycle CPU-timestamp jitter and
+        therefore keeps micro-intentional bias observable (Scott Wilber).
+        Ported verbatim for Chronomancy.
+      canonical_constants:
+        timer_period_ms: 1                # multimedia timer cadence
+        init_to_ramp_threshold: 3         # tscDiff samples
+        ramp_to_normal_threshold: 1000    # tscDiff samples
+        lpfilter_lengths:
+          ramp: 100
+          normal_narrow: 100
+          normal_wide: 1000               # ±5 % deviation
+        quantisation_divisor: 33333       # qFactor = LPF / 33333
+        calibration_notes:
+          hardware_dependency: |
+            Original: 33 333 = calibrated divisor for ~3.3 GHz rdtsc hardware
+            giving ~3.3M cycles/ms. Port challenge: nanosecond timers yield
+            ~1M ns/ms (different scale). The LPF→quantizer pipeline must
+            preserve statistical distribution of eBits (0-255 envelope).
+          adaptive_behavior: |
+            The LPF uses *dynamic length* based on ratio threshold:
+            - Normal: ratio ∈ [0.95, 1.05] → length=100 (narrow window)
+            - Outlier: ratio ∉ [0.95, 1.05] → length=1000 (wide window)
+            This creates natural adaptation without manual recalibration.
+          port_strategy: |
+            1. Collect 1000 timing samples during RampUp (exactly as original)
+            2. Compute LPF_mean after ramp completes
+            3. Set divisor_dyn = LPF_mean / 130.7 (preserves original eBits mean)
+            4. Verify eBits histogram matches original via χ² test
+        lfsr_polynomial_taps: [0, 13, 30, 37, 48]  # feedback into bit-62 (63-bit)
+        corrected_packet:
+          discard_warmup_packets: 10
+          repeats_per_byte: 4
+          bytes_per_packet: 17
+          bits_per_corrected_byte: 7
+        lfsr_seed: 0xAAAAAAAAAAAAAAAA      # canonical 63-bit start value
+        ratio_threshold:
+          high: 1.05
+          low: 0.95
+
+# -----------------------------------------------------------------------------
+# Implementation roadmap for PCQNG port (added 2025-06-25)
+# -----------------------------------------------------------------------------
+pcqng_port_plan: |
+  • Phase A – Python reference: use time.perf_counter_ns() to validate
+    bit-stream parity against original binary samples.
+  • Phase B – WebWorker implementation: 1 ms setInterval loop, high-res
+    performance.now(); mirrors all constants above.  Exposes SharedArray
+    for fast inter-thread transfer.
+  • Phase C – Optional WebAssembly build, compiled from original C++ without
+    rdtsc call (timestamp injected by host).  Only if performance tests
+    show JavaScript bottleneck.
+  • Phase D – Integrate as selectable entropy source (INTERLEAVE modes and
+    SELECTIVE routing apply).
+
+# -----------------------------------------------------------------------------
+# Collective Synchronicity NLP Network
+# -----------------------------------------------------------------------------
+collective_synchronicity_network:
+  access_policy: "Groups can opt-in to give the bot message access (read-only)."
+  benefits: "Opt-in groups gain advanced analytics & synchrony prompts."
+  pipeline:
+    - "Ingest messages ±30 min around temporal attractors."
+    - "Run lightweight NLP to extract entities, emotions, symbols."
+    - "Store symbol graph in relational DB (symbol ↔ user ↔ timestamp)."
+    - "Perform Jungian depth analysis on aggregate symbolism."
+    - "Generate communal narrative dreams through Gen-AI summarizers."
+  expertise_anchor: "Samim (@samimfnord) will advise on dream-narrative generation."
+
+# -----------------------------------------------------------------------------
+# Long-Term Vision – Intention-Based Temporal Search
+# -----------------------------------------------------------------------------
+future_vision:
+  quantum_like_entropy_stream: "Client devices left open continuously stream micro-temporal jitter as community entropy."
+  probability_field_shaping: |
+    Bias amplification + Bayesian decision processes identify optimal
+    time-windows for desired outcomes ("chronomantic alignment").
+  glyphica_link: "Entropy feeds 'Intention Glyph' generator (project Glyphica)."
+  derivatives_market: |
+    Swiss Verein + immutable entropy ledger → regulated derivatives market
+    where sceptics can bet against chronomancers' ability to influence data.

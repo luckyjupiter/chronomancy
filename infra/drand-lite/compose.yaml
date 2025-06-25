@@ -1,0 +1,97 @@
+version: '3.9'
+
+# drand-lite mesh for Chronomancy entropy network
+# Canonical parameters pinned to maintain reproducibility.
+
+drand_version: &drand_version 1.7.2
+
+services:
+  # Generate nine BLS-share validators
+  node1:
+    image: drandorg/drand:*drand_version
+    command: ["/entrypoint.sh"]
+    environment:
+      - DRAND_PRIVATE_LISTEN=/ip4/0.0.0.0/tcp/8081
+      - DRAND_PUBLIC_LISTEN=/ip4/0.0.0.0/tcp/8082
+    volumes:
+      - node1-data:/root/.drand
+  node2:
+    image: drandorg/drand:*drand_version
+    command: ["/entrypoint.sh"]
+    environment:
+      - DRAND_PRIVATE_LISTEN=/ip4/0.0.0.0/tcp/8081
+      - DRAND_PUBLIC_LISTEN=/ip4/0.0.0.0/tcp/8082
+    volumes:
+      - node2-data:/root/.drand
+  node3:
+    image: drandorg/drand:*drand_version
+    command: ["/entrypoint.sh"]
+    environment:
+      - DRAND_PRIVATE_LISTEN=/ip4/0.0.0.0/tcp/8081
+      - DRAND_PUBLIC_LISTEN=/ip4/0.0.0.0/tcp/8082
+    volumes:
+      - node3-data:/root/.drand
+  node4:
+    image: drandorg/drand:*drand_version
+    command: ["/entrypoint.sh"]
+    environment:
+      - DRAND_PRIVATE_LISTEN=/ip4/0.0.0.0/tcp/8081
+      - DRAND_PUBLIC_LISTEN=/ip4/0.0.0.0/tcp/8082
+    volumes:
+      - node4-data:/root/.drand
+  node5:
+    image: drandorg/drand:*drand_version
+    command: ["/entrypoint.sh"]
+    environment:
+      - DRAND_PRIVATE_LISTEN=/ip4/0.0.0.0/tcp/8081
+      - DRAND_PUBLIC_LISTEN=/ip4/0.0.0.0/tcp/8082
+    volumes:
+      - node5-data:/root/.drand
+  node6:
+    image: drandorg/drand:*drand_version
+    command: ["/entrypoint.sh"]
+    environment:
+      - DRAND_PRIVATE_LISTEN=/ip4/0.0.0.0/tcp/8081
+      - DRAND_PUBLIC_LISTEN=/ip4/0.0.0.0/tcp/8082
+    volumes:
+      - node6-data:/root/.drand
+  node7:
+    image: drandorg/drand:*drand_version
+    command: ["/entrypoint.sh"]
+    environment:
+      - DRAND_PRIVATE_LISTEN=/ip4/0.0.0.0/tcp/8081
+      - DRAND_PUBLIC_LISTEN=/ip4/0.0.0.0/tcp/8082
+    volumes:
+      - node7-data:/root/.drand
+  node8:
+    image: drandorg/drand:*drand_version
+    command: ["/entrypoint.sh"]
+    environment:
+      - DRAND_PRIVATE_LISTEN=/ip4/0.0.0.0/tcp/8081
+      - DRAND_PUBLIC_LISTEN=/ip4/0.0.0.0/tcp/8082
+    volumes:
+      - node8-data:/root/.drand
+  node9:
+    image: drandorg/drand:*drand_version
+    command: ["/entrypoint.sh"]
+    environment:
+      - DRAND_PRIVATE_LISTEN=/ip4/0.0.0.0/tcp/8081
+      - DRAND_PUBLIC_LISTEN=/ip4/0.0.0.0/tcp/8082
+    volumes:
+      - node9-data:/root/.drand
+
+volumes:
+  node1-data: {}
+  node2-data: {}
+  node3-data: {}
+  node4-data: {}
+  node5-data: {}
+  node6-data: {}
+  node7-data: {}
+  node8-data: {}
+  node9-data: {}
+
+# The placeholders below will be programmatically expanded to node1..node9
+# because Cursor tool cant dynamically duplicate blocks.  Each node shares the
+# same image but isolated data volume. Threshold (t=6) is enforced at chain
+# init; compose 'up' runs keygen once via entrypoint. 

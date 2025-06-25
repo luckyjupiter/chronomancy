@@ -1,0 +1,3 @@
+@echo off
+echo Starting Chronomancy Cloudflare Tunnel...
+cloudflared tunnel --token eyJhIjoiMjUyY2VhYjUxYzhlZmE2YWVlNThjODFiMDk1NmM1ZWIiLCJ0IjoiYmQ0MDNhMTYtZGIwYS00MDkxLWJhYjMtNzFmOTg1ZDc3NDJhIiwicyI6Ik1UQTJORGt3TTJNdFpUSTJaaTAwWkRZeExXRXpObVl0TmpNek9EazBOamN6TlRJMiJ9 
