@@ -148,7 +148,7 @@ docker compose -f infra/shard-compose.yaml logs -f shard0  # watch for DB init
 # 3. Fire a dummy reveal (should 400 – trace too small)
 curl.exe -X POST http://localhost:8000/focus/reveal ^
   -H "Content-Type: application/json" ^
-  --data '{"epoch":1,"operator_id":"test","merkle_root":"deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef","metrics":{"compression_ratio":0.8,"spectral_slope":0.5,"mutual_information":0.1,"whiteness":0.3,"sample_count":1024}}'
+  --data '{"epoch":1,"operator_id":"test","merkle_root":"deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef","src":"js_timer","metrics":{"compression_ratio":0.8,"spectral_slope":0.5,"mutual_information":0.1,"whiteness":0.3,"sample_count":1024}}'
 
 # 4. Tear down
 docker compose -f infra/shard-compose.yaml down

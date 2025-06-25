@@ -14,11 +14,11 @@ def test_hef_gate(tmp_path, monkeypatch):
     bad_metrics = Metrics(compression_ratio=0.9, spectral_slope=0.5, mutual_information=0.1, whiteness=0.9, sample_count=1024)
 
     for i in range(3):
-        p = RevealPayload(epoch=epoch, operator_id=f"good{i}", merkle_root=f"{i:064x}", metrics=good_metrics)
+        p = RevealPayload(epoch=epoch, operator_id=f"good{i}", merkle_root=f"{i:064x}", metrics=good_metrics, src="js_timer")
         sm.store_reveal(p, good_metrics.quality_score(), 100)
 
     for i in range(8):
-        p = RevealPayload(epoch=epoch, operator_id=f"bad{i}", merkle_root=f"{i+20:064x}", metrics=bad_metrics)
+        p = RevealPayload(epoch=epoch, operator_id=f"bad{i}", merkle_root=f"{i+20:064x}", metrics=bad_metrics, src="js_timer")
         sm.store_reveal(p, bad_metrics.quality_score(), 50)
 
     sm.dump_proof(epoch)
