@@ -400,3 +400,21 @@ statistics_tests:
     Power Analysis: sample counts are frozen so p-values maintain meaning across
     CI runs.  Any alteration requires a paired analysis note and editorial
     approval (Scott Wilber doctrine: reproducibility over convenience).
+
+# -----------------------------------------------------------------------------
+# Entropy Source Constants (added 2025-06-25 per platform-agnostic pivot)
+# -----------------------------------------------------------------------------
+entropy_sources:
+  perf_now:
+    min_variance_ns: 50     # Scott Wilber: below 50 ns indicates clamped timer, discard
+    base_weight: 0.35
+  audio_clock:
+    min_variance_ns: 30     # AudioContext jitter survives background on most devices
+    base_weight: 0.45
+  webtransport_rtt:
+    min_variance_ns: 80     # RTT noise is coarser; only spice
+    base_weight: 0.20
+  pcqng_native:
+    base_weight: 1.00       # Full weight when available (desktop Windows)
+
+honest_entropy_fraction_min: 0.40  # unchanged, cited in Wilber 2020 paper

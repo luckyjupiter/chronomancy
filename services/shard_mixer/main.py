@@ -130,6 +130,7 @@ class RevealPayload(BaseModel):
     epoch: int = Field(..., description="Mesh epoch index (10-s cadence)")
     operator_id: str = Field(..., description="Wallet or device ID")
     merkle_root: str = Field(..., pattern=r"^[0-9a-fA-F]{64}$")  # hex-encoded 32-B hash
+    src: str = Field("perf_now", pattern=r"^[a-z0-9_]+$", description="Entropy source tag (perf_now, audio_clock, rtt, pcqng)")
     metrics: Metrics
 
 
@@ -142,6 +143,7 @@ CREATE TABLE IF NOT EXISTS reveals (
     epoch INTEGER,
     operator_id TEXT,
     merkle_root TEXT,
+    src TEXT,
     quality REAL,
     cap_khz INTEGER,
     received_ts REAL,
@@ -159,11 +161,12 @@ def get_conn() -> sqlite3.Connection:
 def store_reveal(p: RevealPayload, quality: float, cap_khz: int) -> None:
     with get_conn() as conn:
         conn.execute(
-            "INSERT OR REPLACE INTO reveals VALUES (?,?,?,?,?,?)",
+            "INSERT OR REPLACE INTO reveals VALUES (?,?,?,?,?,?,?)",
             (
                 p.epoch,
                 p.operator_id,
                 p.merkle_root.lower(),
+                p.src,
                 quality,
                 cap_khz,
                 time.time(),
@@ -183,8 +186,8 @@ async def focus_reveal(payload: RevealPayload = Body(...)) -> Dict[str, int]:
     # duplicate reveal check
     with get_conn() as conn:
         existing = conn.execute(
-            "SELECT merkle_root FROM reveals WHERE epoch=? AND operator_id=?",
-            (payload.epoch, payload.operator_id),
+            "SELECT merkle_root FROM reveals WHERE epoch=? AND operator_id=? AND src=?",
+            (payload.epoch, payload.operator_id, payload.src),
         ).fetchone()
     if existing is not None:
         raise HTTPException(status_code=409, detail="duplicate reveal for epoch")
