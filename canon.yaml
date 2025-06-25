@@ -366,3 +366,37 @@ future_vision:
   derivatives_market: |
     Swiss Verein + immutable entropy ledger → regulated derivatives market
     where sceptics can bet against chronomancers' ability to influence data.
+
+# -----------------------------------------------------------------------------
+# Entropy Pipeline Constants (added 2025-06-25 per roadmap critique)
+# -----------------------------------------------------------------------------
+entropy_pipeline:
+  public_mesh:
+    epoch_length_s: 10
+    commit_window_s: 5
+    reveal_window_s: 4
+    honest_entropy_fraction_min: 0.40  # Epoch rejected if revealed deltas <40 %
+  focus_channel:
+    merkle_interval_ms: 1000  # Merkle root cadence, decoupled from mesh epoch
+    frame_rate_hz: 1_000_000  # Local sampling target (can down-sample adaptively)
+    latency_budget_ms: 200    # Frames above this are marked stale
+  cost_oracle_placeholder:
+    gwei_per_usd: 0.0001  # TODO: plug into on-chain feed
+    doc: |
+      Placeholder constant bridging gas burn cost to fiat so shard operators are
+      reimbursed.  Updated monthly until automated oracle lands (M-δ).
+
+# -----------------------------------------------------------------------------
+# Testing Sample Counts
+# -----------------------------------------------------------------------------
+statistics_tests:
+  eBits_bias:
+    sample_count: 131_072  # 2¹⁷ – fixed for power analysis, do not change lightly
+  run_length:
+    sample_count: 65_536   # 2¹⁶
+  spectral_density:
+    sample_count: 131_072
+  note: |
+    Power Analysis: sample counts are frozen so p-values maintain meaning across
+    CI runs.  Any alteration requires a paired analysis note and editorial
+    approval (Scott Wilber doctrine: reproducibility over convenience).
