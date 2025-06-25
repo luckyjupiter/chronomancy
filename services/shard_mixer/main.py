@@ -129,7 +129,7 @@ class Metrics(BaseModel):
 class RevealPayload(BaseModel):
     epoch: int = Field(..., description="Mesh epoch index (10-s cadence)")
     operator_id: str = Field(..., description="Wallet or device ID")
-    merkle_root: str = Field(..., regex=r"^[0-9a-fA-F]{64}$")  # hex-encoded 32-B hash
+    merkle_root: str = Field(..., pattern=r"^[0-9a-fA-F]{64}$")  # hex-encoded 32-B hash
     metrics: Metrics
 
 
