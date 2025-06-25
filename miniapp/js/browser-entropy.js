@@ -38,23 +38,45 @@ function currentEpoch() {
 }
 
 // ------------------ Jitter Sampling Logic -------------------
-async function sampleDeltas(count = DELTA_BATCH) {
-  const deltas = new Uint32Array(count);
-  let prev = nowMs();
-  for (let i = 0; i < count; i++) {
-    const cur = nowMs();
-    deltas[i] = Math.floor((cur - prev) * 1e6); // µs diff for high dynamic range
-    prev = cur;
-    // Yield based on current cap to avoid oversampling
-    const delay = sampleDelayUs / 1000; // convert to ms
-    if (delay > 16) {
-      // coarse wait using rAF when very slow
-      await new Promise(r => requestAnimationFrame(r));
-    } else if (delay > 1) {
-      await sleep(delay);
-    } // else busy-loop (no extra wait) – browser timer granularity will still dominate
+// Two-timer sampler: performance.now() via rAF while visible, AudioContext when throttled.
+export async function collectTrace(samples = DELTA_BATCH) {
+  const deltas = new Uint32Array(samples);
+  let count = 0;
+
+  // 1. rAF loop – high-resolution while tab in foreground
+  function rafLoop(tPrev) {
+    return tCurr => {
+      if (count) deltas[count - 1] = Math.floor((tCurr - tPrev) * 1e3); // ms→µs→ns-ish
+      if (++count < samples) requestAnimationFrame(rafLoop(tCurr));
+    };
   }
-  return deltas;
+  requestAnimationFrame(rafLoop(performance.now()));
+
+  // 2. AudioContext oscillator – continues when rAF throttles (background)
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  await ctx.resume(); // requires user-gesture once; okay in Telegram web-view
+  const osc = ctx.createOscillator();
+  osc.start();
+  const t0 = ctx.currentTime;
+  const id = setInterval(() => {
+    if (count && count < samples) {
+      const t1 = ctx.currentTime;
+      deltas[count - 1] = Math.floor((t1 - t0) * 1e6); // s→ns
+    }
+  }, 1); // 1 ms JS timer
+
+  // 3. Wait until buffer filled
+  while (count < samples) await sleep(4);
+
+  clearInterval(id);
+  osc.stop();
+  return deltas.buffer;
+}
+
+// Back-compat shim so existing callers still work
+async function sampleDeltas(count = DELTA_BATCH) {
+  const buf = await collectTrace(count);
+  return new Uint32Array(buf);
 }
 
 // ------------------ Commit / Reveal Cycle -------------------
@@ -102,7 +124,7 @@ export async function startEntropySession({ userId, enabled = true }) {
 
     const revealResp = await API.request('/reveal', {
       method: 'POST',
-      body: JSON.stringify({ epoch, user_id: userId, cid, signature })
+      body: JSON.stringify({ epoch, user_id: userId, cid, signature, src: 'js_timer' })
     });
 
     // Update sampling cap if server responded with new cap_khz

@@ -36,11 +36,6 @@ from pydantic import BaseModel, Field
 BASE_CAP_KHZ = 250
 HONEST_ENTROPY_FRACTION_MIN = 0.40
 
-# Oracle weightings
-W_ZSTD = 0.40
-W_MI = 0.25
-W_SLOPE = 0.35
-
 # ---------------------------------------------------------------------------
 # Storage path – mount a docker volume at /data for persistence
 # ---------------------------------------------------------------------------
@@ -60,16 +55,8 @@ class Metrics(BaseModel):
     sample_count: int = Field(..., ge=1)
 
     def quality_score(self) -> float:
-        """Return composite quality score using canon-pinned weights."""
-        struct = 1 - self.compression_ratio
-        mi = self.mutual_information
-        slope_term = 1 - abs(self.spectral_slope - 1)
-        score = (
-            W_ZSTD * struct
-            + W_MI * mi
-            + W_SLOPE * slope_term
-        )
-        return max(0.0, min(1.0, score))
+        """Return simplified quality score: just structural compressibility."""
+        return max(0.0, min(1.0, 1 - self.compression_ratio))
 
     # ---------------- Class helpers used by tests ----------------
     @classmethod
@@ -130,7 +117,7 @@ class RevealPayload(BaseModel):
     epoch: int = Field(..., description="Mesh epoch index (10-s cadence)")
     operator_id: str = Field(..., description="Wallet or device ID")
     merkle_root: str = Field(..., pattern=r"^[0-9a-fA-F]{64}$")  # hex-encoded 32-B hash
-    src: str = Field("perf_now", pattern=r"^[a-z0-9_]+$", description="Entropy source tag (perf_now, audio_clock, rtt, pcqng)")
+    src: str = Field("js_timer", pattern=r"^[a-z0-9_]+$", description="Entropy source tag – POC only supports 'js_timer'")
     metrics: Metrics
 
 
@@ -147,7 +134,7 @@ CREATE TABLE IF NOT EXISTS reveals (
     quality REAL,
     cap_khz INTEGER,
     received_ts REAL,
-    PRIMARY KEY (epoch, operator_id)
+    PRIMARY KEY (epoch, operator_id, src)
 );
 """
 
