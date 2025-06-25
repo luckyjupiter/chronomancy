@@ -1,0 +1,153 @@
+# canon.yaml – The authoritative specification for the Chronomancy project
+# All comments beginning with `#` are considered docstrings and cite
+# justifications from the Chronomancy editorial collective (🏵️y e s h🏵️, d0ublezer0,
+# Samim, Kat, Mat1e). These five authors form the single source of truth.
+#
+# Editorial Note: "A memetically-optimized system must make the unknown
+# emotionally irresistible while demanding the smallest possible activation energy
+# from the participant."
+
+project:
+  name: "Chronomancy"
+  codename: "Project 3.4"  # Editorial Note: Internal codenames preserve lineage while freeing public branding.
+  tagline: "A random-alarm gateway to perceiving time's hidden patterns"
+  status: "Practical phase — public launch prep"
+  provenance:
+    primary_author: "🏵️y e s h🏵️"
+    contributing_authors:
+      - "d0ublezer0"
+      - "Samim"
+      - "Kat"
+      - "Mat1e"
+    last_updated: "2025-06-24T13:47:00Z"
+    license: "CC-BY-SA 4.0"
+
+# -----------------------------------------------------------------------------
+# Mission & Goals
+# -----------------------------------------------------------------------------
+mission:
+  primary: "Shift exploratory attention from geographic space (Randonautica) to the temporal dimension (Chronomancy)."
+  secondary:
+    - "Demonstrate reproducibility of the Randonautica model."
+    - "Quantify how the stasis field behaves along the time axis."
+    - "Engineer a massive cultural-memetic impact."
+    - "Channel material income into the rhizome economy."
+  rationale: |
+    Editorial Note: Novel modalities of exploration re-energize the memeplex;
+    moving from space to time gives us a fresh axis of wonder without the
+    logistical drag of travel.
+
+# -----------------------------------------------------------------------------
+# Concept Overview
+# -----------------------------------------------------------------------------
+concept:
+  synopsis: |
+    If Randonautica is to Ingress what Chronomancy will be to Pokémon Go, then our
+    mission is to turn an experimental curiosity into an everyday practice.
+
+    The product is a self-contained smartphone app that emits random temporal
+    pings—functionally a 'random alarm clock.'  When the signal fires, the user
+    pauses, observes, and documents anomalies in their surroundings.  Because no
+    travel is required, participation scales friction-free and the server load is
+    near-zero.
+  memetic_edge: "Easier than a trip, richer than a push-notification."
+  mascot_symbol: "White Rabbit holding a pocket-watch"  # Carrollian imagery signals playful time distortion.
+
+# -----------------------------------------------------------------------------
+# Design Principles
+# -----------------------------------------------------------------------------
+design_principles:
+  memetic_efficiency: "Every interaction should be screenshot-worthy and share-ready."
+  zero_friction: "Setup in <60 seconds; no login required for core loop."
+  autonomy: "All randomization and scheduling executed client-side to avoid scaling drag."
+  hype_reset: "Launching as a fresh brand sidesteps legacy inertia and reignites curiosity."
+
+# -----------------------------------------------------------------------------
+# User-Experience Guidelines
+# -----------------------------------------------------------------------------
+ux_guidelines:
+  night_mode_recommendation: "Encourage focus on strange sounds when alarms ring in low visibility."
+  surprise_factors_priority:
+    order: [low_visibility, strange_sounds, unexpected_encounters, perceived_risk]
+  content_prompting: "Immediately surface share sheet or social feed on alarm acknowledge."
+  safety_opt_out: "Allow users to snooze/disable alarms while driving or in meetings."
+
+# -----------------------------------------------------------------------------
+# Theory Stack
+# -----------------------------------------------------------------------------
+theory:
+  pillars:
+    - name: "Unknown-Focus"
+      detail: "Direct the user's gaze toward blind spots to maximize novelty."
+    - name: "Attention Pattern Disruption"
+      detail: "Exploit Cocktail-Party and Baader-Meinhof effects to surface hidden correlations."
+    - name: "Temporal Depth Sense"
+      detail: "Train users to feel patterns, cycles, and retro-linkages in personal timelines."
+    - name: "Holistics & Retrocausality"
+      detail: "Position synchronicity as experiential proof of non-linear time."
+  hype_context: |
+    Pandemic lockdowns birthed Randonautica through spatial hunger; geopolitical
+    stress now shifts the collective craving toward agency over time.  Claiming
+    that 'feeling time' unlocks destiny supplies the needed mythic leverage.
+
+# -----------------------------------------------------------------------------
+# Core Features
+# -----------------------------------------------------------------------------
+features:
+  standalone_app: "Self-contained mobile app able to ring without server heartbeat."
+  random_signals:
+    description: "User specifies an allowable window; N random alarms spawn inside it."
+  exclusion_windows: "User blocks unsafe periods (e.g., driving) to preserve UX safety."
+  synchronous_signal:
+    description: |
+      One hidden alarm per day is generated via a deterministic RNG seeded with the
+      date's digits of π.  All clients thus ring simultaneously, generating a daily
+      'flash-mob' of reports.
+    visibility: "Shadow function — unlisted at launch to encourage organic discovery."
+  future_self_messaging:
+    description: |
+      Users write notes that are surfaced at a later alarm.  Delivery timing can be
+      exact-next or probabilistic to cultivate retrocausal curiosity.
+  quantum_rng_optional: "Option to augment with QRNG (e.g., Temporal) for added mystique."
+  challenges: "Periodic prompts like 'photograph the nearest random object.'"
+  sigil_embedding: "Magickal glyphs encoded in the binary to diffuse across devices."
+
+# -----------------------------------------------------------------------------
+# Surprise Amplifiers (UX Heuristics)
+# -----------------------------------------------------------------------------
+surprise_factors:
+  low_visibility: true   # Night, fog.
+  strange_sounds: true   # Auditory anomalies.
+  unexpected_encounters: true  # Wildlife, strangers.
+  perceived_risk: true   # Danger/fear elements escalate emotional valence.
+  note: |
+    Editorial Note: Emotional amplitude scales share-worthiness; design cues
+    should bias toward environments rich in these factors without endangering the
+    user.
+
+# -----------------------------------------------------------------------------
+# Implementation Notes
+# -----------------------------------------------------------------------------
+implementation:
+  baseline_rng: "Mersenne Twister"  # Deterministic, well-tested.
+  seed_strategy: "Daily π-digits for synchronicity; system entropy for personal pings."
+  scaling_model: "Fully client-side; zero incremental server cost."
+  content_sharing:
+    default_platforms: ["TikTok", "Instagram", "Threads"]
+    mechanism: "Deep-link from alarm toast to share composer."
+
+# -----------------------------------------------------------------------------
+# Deployment & Roadmap
+# -----------------------------------------------------------------------------
+roadmap:
+  phase_1: "Prototype iOS & Android in test-flight channels — focus on alarm accuracy."
+  phase_2: "Closed beta with memetic seeders to validate synchronicity engagement."
+  phase_3: "Public launch accompanied by ARG-style marketing drop."
+  phase_4: "Quantum RNG & sigil update pending user feedback."
+
+# -----------------------------------------------------------------------------
+# Canonical Truth Clause
+# -----------------------------------------------------------------------------
+# Any future documentation must reference or extend this canon.yaml. Divergence
+# is permissible only via explicit amendment blocks reviewed and approved by the
+# Chronomancy editorial collective (🏵️y e s h🏵️, d0ublezer0, Samim, Kat, Mat1e).
