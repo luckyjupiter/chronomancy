@@ -24,6 +24,8 @@ chronomancy/
 ├─ miniapp/           # Telegram WebApp frontend
 ├─ services/
 │   └─ mixer/         # (WIP) epoch mixer & VDF
+│   ├─ shard_mixer/   # per-shard quality gate + cap oracle
+│   └─ mesh_mixer/    # (stub) root-of-roots + VDF
 ├─ infra/
 │   └─ drand-lite/    # 9-node Docker mesh, BLS threshold 6/9
 └─ tools/             # verification + test harness (WIP)
@@ -34,7 +36,8 @@ chronomancy/
 | **Physical noise** | PCQNG jitter port (Windows cycle timer) | ✅ tested |
 | **Browser sampler** | `browser-entropy.js` commit/reveal loop | ⏳ alpha |
 | **Beacon** | drand-lite mesh (docker-compose) | ⏳ alpha |
-| **Mixer** | seed interleave ＋ Wesolowski VDF | 🚧 todo |
+| **Shard Mixer** | focus-channel quality gate (SQLite + FastAPI) | ✅ alpha |
+| **Mesh Mixer** | seed interleave ＋ Wesolowski VDF | 🚧 todo |
 | **Verifier** | one-shot `verify_epoch.py` + GitHub Action | 🚧 todo |
 | **Explorer** | Grafana histogram + Twine pulse viewer | 🚧 todo |
 
@@ -129,6 +132,29 @@ CI must stay green across *all five* layers before merge.
 2. Keep PRs atomic; update `canon.yaml` when you introduce or change a constant.
 3. Add/extend tests **in the same PR**.
 4. Sign commits — we're an entropy project, provenance matters.
+
+---
+
+## 🏃‍♂️ Quick-Start – Local Docker Mesh
+
+```
+# 1. Generate placeholder drand keys (real keys later)
+bash infra/drand-lite/keygen.sh > /tmp/group.toml  # just to inspect
+
+# 2. Spin up a single shard mixer for smoke-tests
+docker compose -f infra/shard-compose.yaml up -d --build shard0
+docker compose -f infra/shard-compose.yaml logs -f shard0  # watch for DB init
+
+# 3. Fire a dummy reveal (should 400 – trace too small)
+curl.exe -X POST http://localhost:8000/focus/reveal ^
+  -H "Content-Type: application/json" ^
+  --data '{"epoch":1,"operator_id":"test","merkle_root":"deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef","metrics":{"compression_ratio":0.8,"spectral_slope":0.5,"mutual_information":0.1,"whiteness":0.3,"sample_count":1024}}'
+
+# 4. Tear down
+docker compose -f infra/shard-compose.yaml down
+```
+
+The shard mixer image installs `fastapi`, `numpy 1.26.4`, and `zstandard 0.22.0` so the CI matrix passes even on macOS runners.
 
 ---
 
