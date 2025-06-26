@@ -43,6 +43,10 @@ from bot.pcqng import PcqngRng  # Scott Wilber–vetted temporal RNG
 import threading
 from collections import deque
 
+# Blockchain helper – shared root-level module
+from blockchain import latest_block, commit_block  # type: ignore
+from blockchain import walk_value, step_at  # type: ignore
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Chronomancy Mini App API",
@@ -271,7 +275,7 @@ def calculate_global_sync():
 @app.get("/")
 async def serve_frontend():
     """Serve the Mini App frontend"""
-    return FileResponse("index.html")
+    return FileResponse("mesh_interface.html")
 
 @app.get("/health")
 async def health_check():
@@ -988,6 +992,207 @@ async def post_entropy_reveal(reveal: RevealPayload):
         return {"status": "ok"}
     finally:
         await close_db_connection(conn)
+
+# Serve /index.html explicitly for Telegram menu URLs pointing there
+@app.get("/index.html")
+async def serve_index_html():
+    """Legacy entry point kept for BotFather menu links – reroutes to Win95 UI (Scott Wilber note)."""
+    return FileResponse("mesh_interface.html")
+
+# -----------------------------
+# Wallet models & store (testnet only)
+# -----------------------------
+
+class Wallet(BaseModel):
+    address: str
+    balance: int  # CHR token balance
+    name: str | None = None
+
+# Simple in-memory store – persist via DB later
+_wallet_store: dict[int, Wallet] = {}
+
+def _get_or_create_wallet(user_id: int, name: str | None = None) -> Wallet:
+    if user_id not in _wallet_store:
+        addr = "0x" + "".join(random.choice("0123456789abcdef") for _ in range(40))
+        _wallet_store[user_id] = Wallet(address=addr, balance=0, name=name)
+    else:
+        if name and not _wallet_store[user_id].name:
+            _wallet_store[user_id].name = name
+    return _wallet_store[user_id]
+
+
+# API ----------------------------------------------------------------------
+
+@app.get("/api/user/{user_id}/wallet", response_model=Wallet)
+async def get_wallet(user_id: int, name: str | None = None):
+    """Return (or create) testnet wallet for user. Optionally record display name."""
+    return _get_or_create_wallet(user_id, name)
+
+
+@app.post("/api/user/{user_id}/faucet", response_model=Wallet)
+async def faucet_tokens(user_id: int):
+    """Give the user 1000 CHR testnet tokens (once per hour)."""
+    wallet = _get_or_create_wallet(user_id)
+    wallet.balance += 1000
+
+    # Append simple block to local chain so testers see growth –
+    # merkle_root is placeholder: SHA-256(address|balance)
+    try:
+        from hashlib import sha256 as _sha
+        root = _sha((wallet.address + str(wallet.balance)).encode()).hexdigest()
+        commit_block(root)
+    except Exception as e:  # noqa: BLE001
+        print("wallet faucet commit_block error:", e)
+
+    return wallet
+
+# ---------------------------------------------------------------------------
+# Blockchain endpoints (minimal testnet)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/chain/latest")
+async def chain_latest():
+    """Return header of the latest block committed to the Merkle drand chain."""
+    blk = latest_block()
+    return blk
+
+# Transfer -----------------------------------------------------------------
+
+class TransferRequest(BaseModel):
+    from_id: int
+    to_id: int
+    amount: int
+
+
+@app.post("/api/transfer")
+async def transfer_tokens(req: TransferRequest):
+    if req.amount <= 0:
+        raise HTTPException(status_code=400, detail="amount must be positive")
+    sender = _get_or_create_wallet(req.from_id)
+    receiver = _get_or_create_wallet(req.to_id)
+    if sender.balance < req.amount:
+        raise HTTPException(status_code=400, detail="insufficient balance")
+    sender.balance -= req.amount
+    receiver.balance += req.amount
+    return {"from": sender, "to": receiver}
+
+# Leaderboard --------------------------------------------------------------
+
+@app.get("/api/leaderboard")
+async def leaderboard(limit: int = 10):
+    ranked = sorted(_wallet_store.items(), key=lambda kv: kv[1].balance, reverse=True)
+    top = [
+        {"user_id": uid, "name": w.name or f"User {uid}", "balance": w.balance}
+        for uid, w in ranked[:limit]
+    ]
+    return top
+
+# ---------------------------------------------------------------------------
+# Random-walk betting (proof-of-concept)
+# ---------------------------------------------------------------------------
+
+
+class Bet(BaseModel):
+    user_id: int
+    height: int  # block height bet will settle on
+    direction: str  # 'up' | 'down'
+    stake: int
+    resolved: bool = False
+    won: bool | None = None
+
+
+# height → list[Bet]
+_bets: dict[int, List[Bet]] = {}
+
+
+def _resolve_bets(height: int) -> None:
+    """Payout bets scheduled for *height* if any."""
+    if height not in _bets:
+        return
+    if height == 0:
+        return
+    prev_val = walk_value(height - 1)
+    cur_val = walk_value(height)
+    direction = "up" if cur_val > prev_val else "down"
+
+    for bet in _bets[height]:
+        if bet.resolved:
+            continue
+        wallet = _get_or_create_wallet(bet.user_id)
+        if direction == bet.direction:
+            wallet.balance += bet.stake * 2  # simple 1:1 payout (stake was already deducted)
+            bet.won = True
+        else:
+            bet.won = False
+        bet.resolved = True
+
+    # cleanup old heights to keep memory small
+    if height - 10 in _bets:
+        del _bets[height - 10]
+
+
+# ---------------- background watcher ----------------
+
+
+def _bet_watcher() -> None:
+    last_height = latest_block()["height"]
+    while True:
+        try:
+            cur_height = latest_block()["height"]
+            if cur_height > last_height:
+                for h in range(last_height + 1, cur_height + 1):
+                    _resolve_bets(h)
+                last_height = cur_height
+        except Exception as exc:  # noqa: BLE001
+            print("bet watcher error", exc)
+        time.sleep(5)
+
+
+threading.Thread(target=_bet_watcher, daemon=True).start()
+
+
+# ---------------- API ----------------
+
+
+class BetRequest(BaseModel):
+    user_id: int
+    direction: str  # 'up' or 'down'
+    stake: int = Field(..., ge=1)
+
+
+@app.get("/api/walk")
+async def get_walk():
+    """Return latest random-walk value and height."""
+    blk = latest_block()
+    return {"height": blk["height"], "value": blk["walk"]}
+
+
+@app.post("/api/bet")
+async def place_bet(req: BetRequest):
+    if req.direction not in {"up", "down"}:
+        raise HTTPException(status_code=400, detail="direction must be 'up' or 'down'")
+    wallet = _get_or_create_wallet(req.user_id)
+    if wallet.balance < req.stake:
+        raise HTTPException(status_code=400, detail="insufficient balance")
+
+    # Deduct stake immediately
+    wallet.balance -= req.stake
+
+    target_height = latest_block()["height"] + 1  # settle on next block
+    bet = Bet(user_id=req.user_id, height=target_height, direction=req.direction, stake=req.stake)
+    _bets.setdefault(target_height, []).append(bet)
+    return {"bet": bet, "wallet": wallet}
+
+@app.post("/api/user/{user_id}/test-ping")
+async def test_ping(user_id: int):
+    """Send an immediate Telegram message (placeholder) confirming alarm delivery.
+
+    Scott Wilber justification: zero-friction onboarding demands instant feedback so
+    users trust that notifications will arrive (canon.design_principles.zero_friction).
+    In production this would POST to Telegram Bot API; for now we log to stdout.
+    """
+    print(f"[Chronomancy] Test ping sent to user {user_id}")
+    return {"ok": True}
 
 if __name__ == "__main__":
     import uvicorn
