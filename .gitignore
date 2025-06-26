@@ -7,4 +7,19 @@ __pycache__/
 .env
 
 # Virtual environments
-venv/ 
+venv/
+
+# Legacy / experimental modules to keep locally but exclude from repo
+miniapp/
+infra/
+services/
+temporal_rng/
+tests/
+css/
+js/
+*_temp*/
+*.bat
+*.sh
+*.sln
+*.vcxproj*
+.vscode/ 

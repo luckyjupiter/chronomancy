@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ping Console</title>
+    <link rel="stylesheet" href="css/win95-refined.css">
+</head>
+<body>
+    <div id="desktop" class="desktop">
+        <!-- Primary Console Interface -->
+        <div id="ping-console" class="console-window">
+            <!-- Header: Clear System Status -->
+            <header class="console-header">
+                <div class="system-status">
+                    <span class="status-label">System Time</span>
+                    <time class="system-clock" id="main-clock">14:42:17</time>
+                    <div class="connection-indicator" id="connection-status" title="Connected"></div>
+                </div>
+            </header>
+
+            <!-- Primary Controls: Core Functionality -->
+            <main class="console-main">
+                <section class="control-group primary">
+                    <h2 class="control-title">Active Window</h2>
+                    <div class="time-control">
+                        <div class="time-input-group">
+                            <label for="start-time" class="time-label">From</label>
+                            <input type="time" id="start-time" class="time-input" value="08:00">
+                        </div>
+                        <div class="time-separator">—</div>
+                        <div class="time-input-group">
+                            <label for="end-time" class="time-label">Until</label>
+                            <input type="time" id="end-time" class="time-input" value="20:00">
+                        </div>
+                    </div>
+                    <div class="window-duration" id="window-duration">12 hours active</div>
+                </section>
+
+                <section class="control-group primary">
+                    <h2 class="control-title">Frequency</h2>
+                    <div class="frequency-control">
+                        <button class="frequency-btn" onclick="adjustPings(-1)" aria-label="Decrease frequency">−</button>
+                        <div class="frequency-display">
+                            <span class="frequency-value" id="ping-count">3</span>
+                            <span class="frequency-unit">pings/day</span>
+                        </div>
+                        <button class="frequency-btn" onclick="adjustPings(1)" aria-label="Increase frequency">+</button>
+                    </div>
+                    <div class="frequency-interval" id="frequency-interval">Every 4 hours</div>
+                </section>
+
+                <!-- Secondary Controls -->
+                <section class="control-group secondary">
+                    <div class="toggle-control">
+                        <input type="checkbox" id="mute-toggle" class="toggle-input">
+                        <label for="mute-toggle" class="toggle-label">
+                            <span class="toggle-text">Mute notifications</span>
+                            <span class="toggle-duration">24 hours</span>
+                        </label>
+                    </div>
+                </section>
+
+                <!-- Action Controls -->
+                <section class="action-controls">
+                    <button class="action-btn primary" onclick="saveSettings()">
+                        Save Configuration
+                    </button>
+                    <button class="action-btn secondary" onclick="showWindow('field-report')">
+                        Send Field Report
+                    </button>
+                </section>
+            </main>
+
+            <!-- Footer: System Information -->
+            <footer class="console-footer">
+                <div class="status-info">
+                    <span id="status-text">Configuration ready</span>
+                    <button class="settings-btn" onclick="showWindow('settings')" aria-label="Open settings">⚙</button>
+                </div>
+            </footer>
+        </div>
+
+        <!-- Field Report Modal -->
+        <div id="field-report" class="modal hidden">
+            <div class="modal-content">
+                <header class="modal-header">
+                    <h2>Field Report Transmission</h2>
+                    <button class="modal-close" onclick="hideWindow('field-report')" aria-label="Close">×</button>
+                </header>
+                
+                <main class="modal-main">
+                    <div class="transmission-info">
+                        <div class="transmission-icon">📡</div>
+                        <p class="transmission-description">
+                            Share observations with the research community at 
+                            <strong>@lucidsurrealism</strong>
+                        </p>
+                    </div>
+
+                    <ol class="transmission-steps">
+                        <li>Document your findings</li>
+                        <li>Include relevant context</li>
+                        <li>Tag @lucidsurrealism</li>
+                    </ol>
+
+                    <div class="modal-actions">
+                        <button class="action-btn primary" onclick="openTelegram()">
+                            Open Telegram
+                        </button>
+                        <button class="action-btn secondary" onclick="hideWindow('field-report')">
+                            Cancel
+                        </button>
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settings" class="modal hidden">
+            <div class="modal-content wide">
+                <header class="modal-header">
+                    <h2>System Information</h2>
+                    <button class="modal-close" onclick="hideWindow('settings')" aria-label="Close">×</button>
+                </header>
+                
+                <main class="modal-main">
+                    <div class="info-grid">
+                        <div class="info-section">
+                            <h3>Profile</h3>
+                            <dl class="info-list">
+                                <dt>User ID</dt>
+                                <dd id="user-id">demo_user</dd>
+                                <dt>Status</dt>
+                                <dd class="status-active">Active</dd>
+                                <dt>Timezone</dt>
+                                <dd>Auto-detect</dd>
+                            </dl>
+                        </div>
+
+                        <div class="info-section">
+                            <h3>Statistics</h3>
+                            <dl class="info-list">
+                                <dt>Total Pings</dt>
+                                <dd>127</dd>
+                                <dt>This Week</dt>
+                                <dd>21</dd>
+                                <dt>Response Rate</dt>
+                                <dd>89%</dd>
+                                <dt>Avg Response</dt>
+                                <dd>2.3 min</dd>
+                            </dl>
+                        </div>
+
+                        <div class="info-section">
+                            <h3>System</h3>
+                            <dl class="info-list">
+                                <dt>API Status</dt>
+                                <dd class="status-ok">Connected</dd>
+                                <dt>Last Sync</dt>
+                                <dd>2 minutes ago</dd>
+                                <dt>Version</dt>
+                                <dd>2.1.0</dd>
+                            </dl>
+                            <button class="action-btn secondary small" onclick="runDiagnostics()">
+                                Run Diagnostics
+                            </button>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container" class="toast-container"></div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

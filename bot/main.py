@@ -60,7 +60,8 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "chronomancy.db")
 
 
 def init_db():
-    con = sqlite3.connect(DB_PATH)
+    # Allow connection reuse across threads (API + bot polling threads)
+    con = sqlite3.connect(DB_PATH, check_same_thread=False)
     cur = con.cursor()
     cur.execute(
         """CREATE TABLE IF NOT EXISTS users (
@@ -169,7 +170,8 @@ class UserConfig:
             return
         offset = dt.timedelta(hours=self.tz_offset or 0)
         now_utc = dt.datetime.utcnow()
-        local_today = (now_utc + offset).date()
+        local_now = now_utc + offset
+        local_today = local_now.date()
 
         start_local = dt.datetime.combine(local_today, self.window_start)
         end_local = dt.datetime.combine(local_today, self.window_end)
@@ -177,12 +179,25 @@ class UserConfig:
             end_local += dt.timedelta(days=1)
 
         span_seconds = int((end_local - start_local).total_seconds())
-        # schedule times in local space then convert to UTC for storage
-        self.todays_alarms = [
-            (start_local + dt.timedelta(seconds=random.randint(0, span_seconds)) - offset)
-            for _ in range(self.daily_count)
-        ]
-        self.todays_alarms.sort()
+        future_times: List[dt.datetime] = []
+        attempts = 0
+        # Generate random times, but ensure they are in the future. If a random
+        # point falls in the past, bump it to the next day's same local time.
+        while len(future_times) < self.daily_count and attempts < self.daily_count * 10:
+            t_local = start_local + dt.timedelta(seconds=random.randint(0, span_seconds))
+            t_utc = t_local - offset
+
+            if t_utc <= now_utc:
+                # Already passed today → schedule for next day
+                t_local += dt.timedelta(days=1)
+                t_utc = t_local - offset
+
+            future_times.append(t_utc)
+            attempts += 1
+
+        future_times.sort()
+        self.todays_alarms = future_times
+
         # persist settings
         with CONN:
             CONN.execute(
@@ -280,7 +295,7 @@ def handle_start(m: Message):
     webapp_keyboard = InlineKeyboardMarkup()
     webapp_button = InlineKeyboardButton(
         "🌀 Open Chronomancy App",
-        web_app=WebAppInfo(url="https://chronomancy.app"),
+                        web_app=WebAppInfo(url="https://chronomancy.app/"),
     )
     webapp_keyboard.add(webapp_button)
 
@@ -361,7 +376,7 @@ def cb_tz_select(call: CallbackQuery):
     webapp_keyboard = InlineKeyboardMarkup()
     webapp_button = InlineKeyboardButton(
         "🌀 Open Chronomancy App", 
-        web_app=WebAppInfo(url="https://chronomancy.app")
+        web_app=WebAppInfo(url="https://chronomancy.app/")
     )
     webapp_keyboard.add(webapp_button)
     
@@ -825,8 +840,8 @@ def send_ping(chat_id: int, text: str, ping_type: str, user_id: Optional[int] = 
         # Create Mini App button for quick access to anomaly reporting
         webapp_keyboard = InlineKeyboardMarkup()
         webapp_button = InlineKeyboardButton(
-            "📝 Open Anomaly Report", 
-            web_app=WebAppInfo(url="https://chronomancy.app")
+            "📝 Report Anomaly", 
+            web_app=WebAppInfo(url="https://chronomancy.app/?mode=anomaly")
         )
         webapp_keyboard.add(webapp_button)
         
@@ -925,6 +940,131 @@ def main():
         except Exception as exc:
             logger.error("Bot polling crashed: %s", exc, exc_info=True)
             time.sleep(5)  # brief back-off then restart
+
+# ---------------------------------------------------------------------------
+# Helper functions for external access (Mini App server integration)
+# ---------------------------------------------------------------------------
+
+def get_user_timer_settings(user_id: int) -> dict:
+    """Get timer settings for a user (for Mini App API)"""
+    try:
+        cur = CONN.execute(
+            "SELECT window_start, window_end, daily_count, tz_offset, muted_until FROM users WHERE chat_id=?", 
+            (user_id,)
+        )
+        row = cur.fetchone()
+        if row:
+            ws, we, count, tz, muted_until = row
+            
+            # Check if muted
+            is_muted = False
+            if muted_until:
+                try:
+                    muted_dt = dt.datetime.fromisoformat(muted_until)
+                    is_muted = dt.datetime.utcnow() < muted_dt
+                except:
+                    pass
+            
+            return {
+                "active": bool(ws and we and count and count > 0),
+                "window_start": ws,
+                "window_end": we,
+                "daily_count": count or 0,
+                "tz_offset": tz,
+                "is_muted": is_muted,
+                "muted_until": muted_until
+            }
+        else:
+            return {
+                "active": False,
+                "window_start": None,
+                "window_end": None,
+                "daily_count": 0,
+                "tz_offset": None,
+                "is_muted": False,
+                "muted_until": None
+            }
+    except Exception as e:
+        logger.error(f"Error getting user timer settings: {e}")
+        return {"active": False, "window_start": None, "window_end": None, "daily_count": 0, "tz_offset": None, "is_muted": False, "muted_until": None}
+
+def set_user_timer(user_id: int, window_start: str, window_end: str, daily_count: int, tz_offset: int = 0) -> bool:
+    """Set timer settings for a user (for Mini App API)"""
+    try:
+        # Validate times
+        start_time = dt.datetime.strptime(window_start, "%H:%M").time()
+        end_time = dt.datetime.strptime(window_end, "%H:%M").time()
+        
+        # Update database
+        with CONN:
+            CONN.execute(
+                "INSERT OR REPLACE INTO users(chat_id, window_start, window_end, daily_count, tz_offset) VALUES (?,?,?,?,?)",
+                (user_id, window_start, window_end, daily_count, tz_offset)
+            )
+        
+        # Update in-memory config if user exists
+        if user_id in USERS:
+            cfg = USERS[user_id]
+            cfg.window_start = start_time
+            cfg.window_end = end_time
+            cfg.daily_count = daily_count
+            cfg.tz_offset = tz_offset
+            cfg.schedule_alarms()
+        else:
+            # Create new user config
+            cfg = UserConfig(
+                chat_id=user_id,
+                window_start=start_time,
+                window_end=end_time,
+                daily_count=daily_count,
+                tz_offset=tz_offset
+            )
+            cfg.schedule_alarms()
+            USERS[user_id] = cfg
+        
+        logger.info(f"Timer set for user {user_id}: {window_start}-{window_end}, {daily_count} pings/day")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error setting user timer: {e}")
+        return False
+
+def mute_user_timer(user_id: int, hours: int = 24) -> bool:
+    """Mute user timer for specified hours (for Mini App API)"""
+    try:
+        muted_until = (dt.datetime.utcnow() + dt.timedelta(hours=hours)).isoformat()
+        
+        with CONN:
+            CONN.execute(
+                "UPDATE users SET muted_until=? WHERE chat_id=?",
+                (muted_until, user_id)
+            )
+        
+        logger.info(f"User {user_id} muted for {hours} hours")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error muting user timer: {e}")
+        return False
+
+def log_anomaly(user_id: int, description: str) -> bool:
+    """Log anomaly observation (for Mini App API)"""
+    try:
+        with CONN:
+            CONN.execute(
+                "INSERT INTO anomalies(ping_id, user_id, chat_id, text, file_id, media_type) VALUES (?,?,?,?,?,?)",
+                (None, user_id, user_id, description, None, None)
+            )
+        
+        logger.info(f"Anomaly logged for user {user_id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error logging anomaly: {e}")
+        return False
+
+# Expose database path for external access
+db_path = DB_PATH
 
 if __name__ == "__main__":
     main() 

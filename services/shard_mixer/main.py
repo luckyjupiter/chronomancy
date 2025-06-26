@@ -29,6 +29,12 @@ import numpy as np
 from fastapi import FastAPI, HTTPException, Body
 from pydantic import BaseModel, Field
 
+# Blockchain helper
+import sys
+from pathlib import Path as _P
+sys.path.append(str(_P(__file__).resolve().parents[2]))  # add repo root
+from blockchain import commit_block, merkle_root  # type: ignore
+
 # ---------------------------------------------------------------------------
 # Canon-pinned constants (mirrored; authoritative copy in canon.yaml)
 # ---------------------------------------------------------------------------
@@ -161,6 +167,12 @@ def store_reveal(p: RevealPayload, quality: float, cap_khz: int) -> None:
             ),
         )
         conn.commit()
+
+    # Chain integration: commit each reveal root for PoC
+    try:
+        commit_block(p.merkle_root.lower())
+    except Exception as exc:  # noqa: BLE001
+        print("commit_block failed", exc)
 
 
 # ---------------------------------------------------------------------------

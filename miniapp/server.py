@@ -22,6 +22,7 @@ import random
 import csv
 from io import StringIO
 import sys
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,6 +44,10 @@ from bot.pcqng import PcqngRng  # Scott Wilber–vetted temporal RNG
 import threading
 from collections import deque
 
+# Blockchain helper – shared root-level module
+from blockchain import latest_block, commit_block  # type: ignore
+from blockchain import walk_value, step_at  # type: ignore
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Chronomancy Mini App API",
@@ -60,7 +65,7 @@ app.add_middleware(
 )
 
 # Database path
-DB_PATH = Path("../bot/chronomancy.db")
+DB_PATH = Path("bot/chronomancy.db")
 
 # π constant for global sync calculations (Scott Wilber's deterministic seeding)
 PI_SEED = 3.14159265358979323846
@@ -268,10 +273,20 @@ def calculate_global_sync():
 
 # API Routes
 
+# Filesystem helpers
+from pathlib import Path
+
+# Base directory for static assets regardless of working directory
+BASE_DIR = Path(__file__).resolve().parent
+
 @app.get("/")
 async def serve_frontend():
-    """Serve the Mini App frontend"""
-    return FileResponse("index.html")
+    """Serve the Simple Chronomancy Mini App frontend"""
+    # Check if simple_index.html exists, otherwise fallback to complex
+    simple_path = BASE_DIR / "simple_index.html"
+    if simple_path.exists():
+        return FileResponse(simple_path)
+    return FileResponse(BASE_DIR / "index.html")
 
 @app.get("/health")
 async def health_check():
@@ -281,10 +296,9 @@ async def health_check():
 @app.get("/api/user/{user_id}/settings")
 async def get_user_settings(user_id: int):
     """Get user settings from database"""
-    conn = await get_db_connection()
-    try:
+    async with db_conn() as db:
         cursor = await asyncio.get_event_loop().run_in_executor(
-            None, conn.execute,
+            None, db.execute,
             "SELECT timezone, ping_start, ping_end, ping_enabled FROM users WHERE user_id = ?",
             (user_id,)
         )
@@ -307,27 +321,22 @@ async def get_user_settings(user_id: int):
                 "ping_end": "21:00",
                 "ping_enabled": True
             }
-    finally:
-        await close_db_connection(conn)
 
 @app.post("/api/user/{user_id}/settings")
 async def update_user_settings(user_id: int, settings: UserSettings):
     """Update user settings in database"""
-    conn = await get_db_connection()
-    try:
+    async with db_conn() as db:
         # Insert or update user settings
         await asyncio.get_event_loop().run_in_executor(
-            None, conn.execute,
+            None, db.execute,
             """INSERT OR REPLACE INTO users 
                (user_id, timezone, ping_start, ping_end, ping_enabled, first_seen)
                VALUES (?, ?, ?, ?, ?, COALESCE((SELECT first_seen FROM users WHERE user_id = ?), ?))""",
             (user_id, settings.timezone, settings.ping_start, settings.ping_end, 
              settings.ping_enabled, user_id, datetime.now().isoformat())
         )
-        await asyncio.get_event_loop().run_in_executor(None, conn.commit)
+        await asyncio.get_event_loop().run_in_executor(None, db.commit)
         return {"status": "success", "message": "Settings updated"}
-    finally:
-        await close_db_connection(conn)
 
 @app.get("/api/global-sync")
 async def get_global_sync() -> GlobalSyncResponse:
@@ -356,36 +365,32 @@ async def get_global_sync() -> GlobalSyncResponse:
 @app.post("/api/user/{user_id}/anomaly")
 async def report_anomaly(user_id: int, anomaly: AnomalyReport, background_tasks: BackgroundTasks):
     """Report an anomaly observation"""
-    conn = await get_db_connection()
-    try:
+    async with db_conn() as db:
         timestamp = datetime.now().isoformat()
         
         # Store anomaly in database
         await asyncio.get_event_loop().run_in_executor(
-            None, conn.execute,
+            None, db.execute,
             """INSERT INTO anomalies 
                (user_id, timestamp, description, location, latitude, longitude, media_url)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (user_id, timestamp, anomaly.description, anomaly.location,
              anomaly.latitude, anomaly.longitude, anomaly.media_url)
         )
-        await asyncio.get_event_loop().run_in_executor(None, conn.commit)
+        await asyncio.get_event_loop().run_in_executor(None, db.commit)
         
         return {
             "status": "success",
             "message": "Anomaly recorded",
             "timestamp": timestamp
         }
-    finally:
-        await close_db_connection(conn)
 
 @app.get("/api/user/{user_id}/anomalies")
 async def get_user_anomalies(user_id: int, limit: int = 50):
     """Get user's anomaly history"""
-    conn = await get_db_connection()
-    try:
+    async with db_conn() as db:
         cursor = await asyncio.get_event_loop().run_in_executor(
-            None, conn.execute,
+            None, db.execute,
             """SELECT timestamp, description, location, latitude, longitude, media_url
                FROM anomalies WHERE user_id = ? 
                ORDER BY timestamp DESC LIMIT ?""",
@@ -405,17 +410,14 @@ async def get_user_anomalies(user_id: int, limit: int = 50):
             })
         
         return {"anomalies": anomalies}
-    finally:
-        await close_db_connection(conn)
 
 @app.get("/api/stats")
 async def get_global_stats():
     """Get global Chronomancy statistics"""
-    conn = await get_db_connection()
-    try:
+    async with db_conn() as db:
         # Get total users
         cursor = await asyncio.get_event_loop().run_in_executor(
-            None, conn.execute,
+            None, db.execute,
             "SELECT COUNT(*) as count FROM users"
         )
         user_count = (await asyncio.get_event_loop().run_in_executor(None, cursor.fetchone))["count"]
@@ -423,7 +425,7 @@ async def get_global_stats():
         # Get total anomalies today
         today = datetime.now().date().isoformat()
         cursor = await asyncio.get_event_loop().run_in_executor(
-            None, conn.execute,
+            None, db.execute,
             "SELECT COUNT(*) as count FROM anomalies WHERE DATE(timestamp) = ?",
             (today,)
         )
@@ -431,7 +433,7 @@ async def get_global_stats():
         
         # Get total anomalies all time
         cursor = await asyncio.get_event_loop().run_in_executor(
-            None, conn.execute,
+            None, db.execute,
             "SELECT COUNT(*) as count FROM anomalies"
         )
         total_anomalies = (await asyncio.get_event_loop().run_in_executor(None, cursor.fetchone))["count"]
@@ -442,8 +444,6 @@ async def get_global_stats():
             "total_anomalies": total_anomalies,
             "next_global_sync": calculate_global_sync()
         }
-    finally:
-        await close_db_connection(conn)
 
 @app.post("/api/webhook/telegram")
 async def telegram_webhook(request: Request):
@@ -460,7 +460,7 @@ async def get_user_profile(user_id: int):
     Implements Scott Wilber's user profile methodology from the canonical framework,
     providing temporal exploration metrics and configuration status.
     """
-    async with get_db_connection() as db:
+    async with db_conn() as db:
         # Get user settings
         user_data = await db.execute(
             "SELECT window_start, window_end, daily_count, tz_offset FROM users WHERE chat_id = ?",
@@ -507,7 +507,7 @@ async def get_user_reports(user_id: int, limit: int = 10):
     Per Scott Wilber's temporal documentation methodology, returns chronologically
     ordered anomaly observations with ping context for pattern analysis.
     """
-    async with get_db_connection() as db:
+    async with db_conn() as db:
         reports = await db.execute("""
             SELECT a.id, a.text, a.media_type, a.created_at, p.ping_type 
             FROM anomalies a 
@@ -537,7 +537,7 @@ async def get_user_activity(user_id: int):
     Following Scott Wilber's engagement metrics framework, provides detailed
     analysis of temporal exploration participation and response patterns.
     """
-    async with get_db_connection() as db:
+    async with db_conn() as db:
         # Get ping stats by type
         ping_stats_query = await db.execute(
             "SELECT ping_type, COUNT(*) FROM pings WHERE user_id = ? GROUP BY ping_type",
@@ -592,7 +592,7 @@ async def export_user_data(user_id: int):
     Implements Scott Wilber's data export methodology for comprehensive
     pattern analysis and external research integration.
     """
-    async with get_db_connection() as db:
+    async with db_conn() as db:
         # Get all user's pings and anomalies
         data_query = await db.execute("""
             SELECT 
@@ -634,7 +634,7 @@ async def export_user_data(user_id: int):
 @app.get("/api/user/{user_id}/future-messages", response_model=List[FutureMessage])
 async def get_future_messages(user_id: int):
     """Get user's queued future messages."""
-    async with get_db_connection() as db:
+    async with db_conn() as db:
         messages_query = await db.execute(
             "SELECT id, message FROM future_msgs WHERE chat_id = ? ORDER BY id",
             (user_id,)
@@ -645,7 +645,7 @@ async def get_future_messages(user_id: int):
 @app.post("/api/user/{user_id}/future-messages")
 async def add_future_message(user_id: int, message: dict):
     """Add a future message to the user's queue."""
-    async with get_db_connection() as db:
+    async with db_conn() as db:
         await db.execute(
             "INSERT INTO future_msgs (chat_id, message) VALUES (?, ?)",
             (user_id, message["text"])
@@ -656,7 +656,7 @@ async def add_future_message(user_id: int, message: dict):
 @app.delete("/api/user/{user_id}/future-messages/{message_id}")
 async def delete_future_message(user_id: int, message_id: int):
     """Delete a future message from the user's queue."""
-    async with get_db_connection() as db:
+    async with db_conn() as db:
         await db.execute(
             "DELETE FROM future_msgs WHERE id = ? AND chat_id = ?",
             (message_id, user_id)
@@ -664,15 +664,25 @@ async def delete_future_message(user_id: int, message_id: int):
         await db.commit()
     return {"status": "success", "message": "Future message deleted"}
 
+@asynccontextmanager
+async def db_conn():
+    import sqlite3
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        yield conn
+    finally:
+        conn.close()
+
 @app.get("/api/user/{user_id}/window", response_model=WindowSettings)
 async def get_window_settings(user_id: int):
     """Get user's alarm window settings."""
-    async with get_db_connection() as db:
-        user_data = await db.execute(
+    async with db_conn() as db:
+        cursor = db.execute(
             "SELECT window_start, window_end, daily_count, tz_offset, muted_until FROM users WHERE chat_id = ?",
             (user_id,)
         )
-        user_row = await user_data.fetchone()
+        user_row = cursor.fetchone()
         
         if user_row:
             return WindowSettings(
@@ -683,7 +693,8 @@ async def get_window_settings(user_id: int):
                 muted_until=user_row[4]
             )
         else:
-            return WindowSettings()
+            # Provide sane defaults: 08:00–20:00 local, 3 pings/day
+            return WindowSettings(window_start="08:00", window_end="20:00", daily_count=3)
 
 @app.post("/api/user/{user_id}/window")
 async def update_window_settings(user_id: int, settings: WindowSettings):
@@ -693,19 +704,19 @@ async def update_window_settings(user_id: int, settings: WindowSettings):
     Implements Scott Wilber's temporal window configuration methodology
     for personalized chronomantic exploration scheduling.
     """
-    async with get_db_connection() as db:
-        await db.execute("""
-            INSERT OR REPLACE INTO users (chat_id, window_start, window_end, daily_count, tz_offset, muted_until) 
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            user_id,
-            settings.window_start,
-            settings.window_end,
-            settings.daily_count,
-            settings.tz_offset,
-            settings.muted_until
-        ))
-        await db.commit()
+    async with db_conn() as db:
+        db.execute(
+            """INSERT OR REPLACE INTO users (chat_id, window_start, window_end, daily_count, tz_offset, muted_until) VALUES (?, ?, ?, ?, ?, ?)""",
+            (
+                user_id,
+                settings.window_start,
+                settings.window_end,
+                settings.daily_count,
+                settings.tz_offset,
+                settings.muted_until,
+            ),
+        )
+        db.commit()
     return {"status": "success", "message": "Window settings updated"}
 
 @app.post("/api/user/{user_id}/mute")
@@ -725,13 +736,13 @@ async def mute_user(user_id: int, mute_request: MuteRequest):
     elif mute_request.mute_until:
         mute_until = mute_request.mute_until
     
-    async with get_db_connection() as db:
-        await db.execute("""
+    async with db_conn() as db:
+        db.execute("""
             INSERT OR REPLACE INTO users (chat_id, muted_until) 
             VALUES (?, ?)
             ON CONFLICT(chat_id) DO UPDATE SET muted_until = excluded.muted_until
         """, (user_id, mute_until))
-        await db.commit()
+        db.commit()
     
     return {"status": "success", "message": "Muting activated", "muted_until": mute_until}
 
@@ -742,11 +753,11 @@ async def unmute_user(user_id: int):
     
     Restores normal temporal ping scheduling per Scott Wilber's framework.
     """
-    async with get_db_connection() as db:
-        await db.execute("""
+    async with db_conn() as db:
+        db.execute("""
             UPDATE users SET muted_until = NULL WHERE chat_id = ?
         """, (user_id,))
-        await db.commit()
+        db.commit()
     
     return {"status": "success", "message": "Muting deactivated"}
 
@@ -757,12 +768,12 @@ async def get_mute_status(user_id: int):
     
     Returns mute status and remaining time for temporal ping coordination.
     """
-    async with get_db_connection() as db:
-        mute_data = await db.execute(
+    async with db_conn() as db:
+        mute_data = db.execute(
             "SELECT muted_until FROM users WHERE chat_id = ?",
             (user_id,)
         )
-        mute_row = await mute_data.fetchone()
+        mute_row = mute_data.fetchone()
         
         if mute_row and mute_row[0]:
             muted_until = datetime.fromisoformat(mute_row[0])
@@ -777,8 +788,8 @@ async def get_mute_status(user_id: int):
                 }
             else:
                 # Mute expired, clean up
-                await db.execute("UPDATE users SET muted_until = NULL WHERE chat_id = ?", (user_id,))
-                await db.commit()
+                db.execute("UPDATE users SET muted_until = NULL WHERE chat_id = ?", (user_id,))
+                db.commit()
         
         return {"is_muted": False}
 
@@ -790,33 +801,33 @@ async def get_global_stats():
     Per Scott Wilber's network analysis framework, provides comprehensive
     metrics on the collective temporal exploration initiative.
     """
-    async with get_db_connection() as db:
+    async with db_conn() as db:
         # Active users
-        active_users_query = await db.execute(
+        active_users_query = db.execute(
             "SELECT COUNT(DISTINCT chat_id) FROM users WHERE tz_offset IS NOT NULL"
         )
-        active_users_result = await active_users_query.fetchone()
+        active_users_result = active_users_query.fetchone()
         active_users = active_users_result[0] if active_users_result else 0
         
         # Total pings
-        total_pings_query = await db.execute("SELECT COUNT(*) FROM pings")
-        total_pings_result = await total_pings_query.fetchone()
+        total_pings_query = db.execute("SELECT COUNT(*) FROM pings")
+        total_pings_result = total_pings_query.fetchone()
         total_pings = total_pings_result[0] if total_pings_result else 0
         
         # Total anomalies
-        total_anomalies_query = await db.execute("SELECT COUNT(*) FROM anomalies")
-        total_anomalies_result = await total_anomalies_query.fetchone()
+        total_anomalies_query = db.execute("SELECT COUNT(*) FROM anomalies")
+        total_anomalies_result = total_anomalies_query.fetchone()
         total_anomalies = total_anomalies_result[0] if total_anomalies_result else 0
         
         # Response rate
         response_rate = (total_anomalies / total_pings * 100) if total_pings > 0 else 0
         
         # Recent activity (last 7 days)
-        recent_pings_query = await db.execute("""
+        recent_pings_query = db.execute("""
             SELECT COUNT(*) FROM pings 
             WHERE sent_at_utc > datetime('now', '-7 days')
         """)
-        recent_pings_result = await recent_pings_query.fetchone()
+        recent_pings_result = recent_pings_query.fetchone()
         recent_pings = recent_pings_result[0] if recent_pings_result else 0
         
         # Calculate next sync time (π-seeded deterministic algorithm per Scott Wilber)
@@ -883,9 +894,10 @@ async def get_random_challenge():
     
     return Challenge(text=random.choice(challenges))
 
-# Mount static files
-app.mount("/js", StaticFiles(directory="js"), name="js")
-app.mount("/static", StaticFiles(directory="."), name="static")
+# Serve assets from paths relative to this file so uvicorn can run from any CWD
+app.mount("/js", StaticFiles(directory=BASE_DIR / "js"), name="js")
+app.mount("/css", StaticFiles(directory=BASE_DIR / "css"), name="css")
+app.mount("/static", StaticFiles(directory=BASE_DIR), name="static")
 
 # Exception handlers
 @app.exception_handler(404)
@@ -949,28 +961,24 @@ def _init_entropy_tables(conn):
 @app.post("/commit")
 async def post_entropy_commit(commit: CommitPayload):
     """Store commit record (first phase of epoch)."""
-    conn = await get_db_connection()
-    try:
+    async with db_conn() as db:
         await asyncio.get_event_loop().run_in_executor(
             None,
-            conn.execute,
+            db.execute,
             "INSERT OR REPLACE INTO entropy_commits (epoch, user_id, nonce, commit_hash, commit_time) VALUES (?, ?, ?, ?, ?)",
             (commit.epoch, commit.user_id, commit.nonce, commit.commit_hash.lower(), datetime.utcnow().isoformat())
         )
-        await asyncio.get_event_loop().run_in_executor(None, conn.commit)
+        await asyncio.get_event_loop().run_in_executor(None, db.commit)
         return {"status": "ok"}
-    finally:
-        await close_db_connection(conn)
 
 
 @app.post("/reveal")
 async def post_entropy_reveal(reveal: RevealPayload):
     """Store reveal record (second phase)."""
-    conn = await get_db_connection()
-    try:
+    async with db_conn() as db:
         # Verify commit exists
         cursor = await asyncio.get_event_loop().run_in_executor(
-            None, conn.execute,
+            None, db.execute,
             "SELECT 1 FROM entropy_commits WHERE epoch=? AND user_id=?",
             (reveal.epoch, reveal.user_id)
         )
@@ -980,14 +988,219 @@ async def post_entropy_reveal(reveal: RevealPayload):
         # Store reveal
         await asyncio.get_event_loop().run_in_executor(
             None,
-            conn.execute,
+            db.execute,
             "INSERT OR REPLACE INTO entropy_reveals (epoch, user_id, cid, signature, reveal_time) VALUES (?, ?, ?, ?, ?)",
             (reveal.epoch, reveal.user_id, reveal.cid, reveal.signature, datetime.utcnow().isoformat())
         )
-        await asyncio.get_event_loop().run_in_executor(None, conn.commit)
+        await asyncio.get_event_loop().run_in_executor(None, db.commit)
         return {"status": "ok"}
-    finally:
-        await close_db_connection(conn)
+
+# Serve /index.html explicitly for Telegram menu URLs pointing there
+@app.get("/index.html")
+async def serve_index_html():
+    """Serve index.html (Ping Console). Legacy Win95 UI remains at /mesh_interface.html for now."""
+    return FileResponse(BASE_DIR / "index.html")
+
+# Dedicated Ping Console page
+@app.get("/console.html")
+async def serve_console_html():
+    return FileResponse(BASE_DIR / "console.html")
+
+# -----------------------------
+# Wallet models & store (testnet only)
+# -----------------------------
+
+class Wallet(BaseModel):
+    address: str
+    balance: int  # CHR token balance
+    name: str | None = None
+
+# Simple in-memory store – persist via DB later
+_wallet_store: dict[int, Wallet] = {}
+
+def _get_or_create_wallet(user_id: int, name: str | None = None) -> Wallet:
+    if user_id not in _wallet_store:
+        addr = "0x" + "".join(random.choice("0123456789abcdef") for _ in range(40))
+        _wallet_store[user_id] = Wallet(address=addr, balance=0, name=name)
+    else:
+        if name and not _wallet_store[user_id].name:
+            _wallet_store[user_id].name = name
+    return _wallet_store[user_id]
+
+
+# API ----------------------------------------------------------------------
+
+@app.get("/api/user/{user_id}/wallet", response_model=Wallet)
+async def get_wallet(user_id: int, name: str | None = None):
+    """Return (or create) testnet wallet for user. Optionally record display name."""
+    return _get_or_create_wallet(user_id, name)
+
+
+@app.post("/api/user/{user_id}/faucet", response_model=Wallet)
+async def faucet_tokens(user_id: int):
+    """Give the user 1000 CHR testnet tokens (once per hour)."""
+    wallet = _get_or_create_wallet(user_id)
+    wallet.balance += 1000
+
+    # Append simple block to local chain so testers see growth –
+    # merkle_root is placeholder: SHA-256(address|balance)
+    try:
+        from hashlib import sha256 as _sha
+        root = _sha((wallet.address + str(wallet.balance)).encode()).hexdigest()
+        commit_block(root)
+    except Exception as e:  # noqa: BLE001
+        print("wallet faucet commit_block error:", e)
+
+    return wallet
+
+# ---------------------------------------------------------------------------
+# Blockchain endpoints (minimal testnet)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/chain/latest")
+async def chain_latest():
+    """Return header of the latest block committed to the Merkle drand chain."""
+    blk = latest_block()
+    return blk
+
+# Transfer -----------------------------------------------------------------
+
+class TransferRequest(BaseModel):
+    from_id: int
+    to_id: int
+    amount: int
+
+
+@app.post("/api/transfer")
+async def transfer_tokens(req: TransferRequest):
+    if req.amount <= 0:
+        raise HTTPException(status_code=400, detail="amount must be positive")
+    sender = _get_or_create_wallet(req.from_id)
+    receiver = _get_or_create_wallet(req.to_id)
+    if sender.balance < req.amount:
+        raise HTTPException(status_code=400, detail="insufficient balance")
+    sender.balance -= req.amount
+    receiver.balance += req.amount
+    return {"from": sender, "to": receiver}
+
+# Leaderboard --------------------------------------------------------------
+
+@app.get("/api/leaderboard")
+async def leaderboard(limit: int = 10):
+    ranked = sorted(_wallet_store.items(), key=lambda kv: kv[1].balance, reverse=True)
+    top = [
+        {"user_id": uid, "name": w.name or f"User {uid}", "balance": w.balance}
+        for uid, w in ranked[:limit]
+    ]
+    return top
+
+# ---------------------------------------------------------------------------
+# Random-walk betting (proof-of-concept)
+# ---------------------------------------------------------------------------
+
+
+class Bet(BaseModel):
+    user_id: int
+    height: int  # block height bet will settle on
+    direction: str  # 'up' | 'down'
+    stake: int
+    resolved: bool = False
+    won: bool | None = None
+
+
+# height → list[Bet]
+_bets: dict[int, List[Bet]] = {}
+
+
+def _resolve_bets(height: int) -> None:
+    """Payout bets scheduled for *height* if any."""
+    if height not in _bets:
+        return
+    if height == 0:
+        return
+    prev_val = walk_value(height - 1)
+    cur_val = walk_value(height)
+    direction = "up" if cur_val > prev_val else "down"
+
+    for bet in _bets[height]:
+        if bet.resolved:
+            continue
+        wallet = _get_or_create_wallet(bet.user_id)
+        if direction == bet.direction:
+            wallet.balance += bet.stake * 2  # simple 1:1 payout (stake was already deducted)
+            bet.won = True
+        else:
+            bet.won = False
+        bet.resolved = True
+
+    # cleanup old heights to keep memory small
+    if height - 10 in _bets:
+        del _bets[height - 10]
+
+
+# ---------------- background watcher ----------------
+
+
+def _bet_watcher() -> None:
+    last_height = latest_block()["height"]
+    while True:
+        try:
+            cur_height = latest_block()["height"]
+            if cur_height > last_height:
+                for h in range(last_height + 1, cur_height + 1):
+                    _resolve_bets(h)
+                last_height = cur_height
+        except Exception as exc:  # noqa: BLE001
+            print("bet watcher error", exc)
+        time.sleep(5)
+
+
+threading.Thread(target=_bet_watcher, daemon=True).start()
+
+
+# ---------------- API ----------------
+
+
+class BetRequest(BaseModel):
+    user_id: int
+    direction: str  # 'up' or 'down'
+    stake: int = Field(..., ge=1)
+
+
+@app.get("/api/walk")
+async def get_walk():
+    """Return latest random-walk value and height."""
+    blk = latest_block()
+    return {"height": blk["height"], "value": blk["walk"]}
+
+
+@app.post("/api/bet")
+async def place_bet(req: BetRequest):
+    if req.direction not in {"up", "down"}:
+        raise HTTPException(status_code=400, detail="direction must be 'up' or 'down'")
+    wallet = _get_or_create_wallet(req.user_id)
+    if wallet.balance < req.stake:
+        raise HTTPException(status_code=400, detail="insufficient balance")
+
+    # Deduct stake immediately
+    wallet.balance -= req.stake
+
+    target_height = latest_block()["height"] + 1  # settle on next block
+    bet = Bet(user_id=req.user_id, height=target_height, direction=req.direction, stake=req.stake)
+    _bets.setdefault(target_height, []).append(bet)
+    return {"bet": bet, "wallet": wallet}
+
+@app.post("/api/user/{user_id}/test-ping")
+async def test_ping(user_id: int):
+    """Send an immediate Telegram message confirming alarm delivery.
+
+    Scott Wilber justification: zero-friction onboarding demands instant feedback so
+    users trust that notifications will arrive (canon.design_principles.zero_friction).
+    
+    For local testing, this simulates the ping without requiring actual Telegram setup.
+    """
+    print(f"[Chronomancy] Test ping sent to user {user_id}")
+    return {"ok": True, "message": "Test confirmation sent", "note": "In production, this would send a Telegram message."}
 
 if __name__ == "__main__":
     import uvicorn

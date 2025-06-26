@@ -3,920 +3,459 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌀 Chronomancy - Temporal Synchronization</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #0F0C29 0%, #24243e 50%, #302B63 100%);
-            color: #f8fafc;
-            height: 100vh;
-            overflow-x: hidden;
-            position: relative;
-        }
-
-        /* Animated cosmic background */
-        .cosmic-bg {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: 
-                radial-gradient(circle at 20% 30%, rgba(138, 43, 226, 0.1) 0%, transparent 40%),
-                radial-gradient(circle at 80% 70%, rgba(255, 215, 0, 0.08) 0%, transparent 40%),
-                radial-gradient(circle at 40% 80%, rgba(0, 191, 255, 0.06) 0%, transparent 40%);
-            animation: cosmicShift 20s ease-in-out infinite;
-        }
-
-        @keyframes cosmicShift {
-            0%, 100% { transform: rotate(0deg) scale(1); }
-            33% { transform: rotate(120deg) scale(1.1); }
-            66% { transform: rotate(240deg) scale(0.9); }
-        }
-
-        /* Three.js Canvas */
-        #three-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
-
-        /* Sacred geometry overlay */
-        .sacred-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 2;
-            opacity: 0.1;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23ffd700' opacity='0.3'%3E%3Ccircle cx='50' cy='50' r='2'/%3E%3Ccircle cx='50' cy='50' r='15' fill='none' stroke='%23ffd700' stroke-width='0.5'/%3E%3Ccircle cx='50' cy='50' r='25' fill='none' stroke='%23ffd700' stroke-width='0.3'/%3E%3Ccircle cx='50' cy='50' r='35' fill='none' stroke='%23ffd700' stroke-width='0.2'/%3E%3C/g%3E%3C/svg%3E");
-            animation: sacredRotate 60s linear infinite;
-        }
-
-        @keyframes sacredRotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        /* UI Overlay */
-        #ui-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 20px;
-            pointer-events: none;
-            overflow-y: auto;
-        }
-
-        .ui-section {
-            pointer-events: auto;
-        }
-
-        /* Header */
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .header h1 {
-            font-size: 2.5rem;
-            font-weight: 300;
-            background: linear-gradient(135deg, #ffd700, #ff6b6b, #4ecdc4, #45b7d1);
-            background-size: 300% 300%;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: gradientShift 8s ease-in-out infinite;
-            margin-bottom: 8px;
-            text-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
-        }
-
-        @keyframes gradientShift {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-        }
-
-        .header p {
-            font-size: 0.9rem;
-            opacity: 0.8;
-            color: #b8c5d6;
-            animation: pulse 3s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 0.6; }
-            50% { opacity: 1; }
-        }
-
-        /* Status Panel */
-        .status-panel {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            padding: 25px;
-            margin-bottom: 20px;
-            box-shadow: 
-                0 8px 32px rgba(0, 0, 0, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .status-panel::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.1), transparent);
-            animation: shimmer 6s infinite;
-        }
-
-        @keyframes shimmer {
-            0% { left: -100%; }
-            100% { left: 100%; }
-        }
-
-        .status-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .status-item.clickable {
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border-radius: 8px;
-            padding: 12px 8px;
-            margin: 0 -8px;
-        }
-
-        .status-item.clickable:hover {
-            background: rgba(255, 215, 0, 0.1);
-            transform: translateX(4px);
-        }
-
-        .window-indicator {
-            font-size: 1.2rem;
-            margin-left: 4px;
-        }
-
-        .status-label {
-            font-size: 0.9rem;
-            color: #b8c5d6;
-            font-weight: 500;
-        }
-
-        .status-value {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #ffd700;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .ping-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #4ecdc4;
-            box-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
-            animation: pingPulse 2s ease-in-out infinite;
-        }
-
-        @keyframes pingPulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.3); opacity: 0.7; }
-        }
-
-        /* Navigation Buttons */
-        .nav-buttons {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .nav-button {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            padding: 15px 10px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            color: #b8c5d6;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-
-        .nav-button:hover {
-            background: rgba(255, 215, 0, 0.1);
-            border-color: rgba(255, 215, 0, 0.3);
-            color: #ffd700;
-            transform: translateY(-2px);
-        }
-
-        .nav-button .icon {
-            font-size: 1.5rem;
-            margin-bottom: 5px;
-            display: block;
-        }
-
-        /* Mystical Buttons */
-        .button {
-            width: 100%;
-            padding: 16px 20px;
-            margin: 8px 0;
-            border: none;
-            border-radius: 15px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-            background: linear-gradient(135deg, rgba(138, 43, 226, 0.8), rgba(255, 20, 147, 0.8));
-            color: white;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-            box-shadow: 
-                0 4px 15px rgba(138, 43, 226, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.2);
-        }
-
-        .button::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s ease;
-        }
-
-        .button:hover::before {
-            left: 100%;
-        }
-
-        .button:hover {
-            transform: translateY(-2px);
-            box-shadow: 
-                0 6px 20px rgba(138, 43, 226, 0.4),
-                inset 0 1px 0 rgba(255, 255, 255, 0.3);
-        }
-
-        .button:active {
-            transform: translateY(0);
-        }
-
-        /* Specific button colors */
-        .button.setup {
-            background: linear-gradient(135deg, rgba(255, 215, 0, 0.8), rgba(255, 140, 0, 0.8));
-            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
-        }
-
-        .button.anomaly {
-            background: linear-gradient(135deg, rgba(255, 20, 147, 0.8), rgba(220, 20, 60, 0.8));
-            box-shadow: 0 4px 15px rgba(255, 20, 147, 0.3);
-        }
-
-        .button.history {
-            background: linear-gradient(135deg, rgba(78, 205, 196, 0.8), rgba(69, 183, 209, 0.8));
-            box-shadow: 0 4px 15px rgba(78, 205, 196, 0.3);
-        }
-
-        /* Floating Panels */
-        .panel {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100vh;
-            background: rgba(15, 12, 41, 0.95);
-            backdrop-filter: blur(20px);
-            z-index: 1000;
-            display: none;
-            overflow-y: auto;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-
-        .panel.active {
-            display: block;
-        }
-
-        .panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .panel-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #ffd700;
-        }
-
-        .close-button {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            color: #b8c5d6;
-            cursor: pointer;
-            padding: 5px;
-            transition: color 0.3s ease;
-        }
-
-        .close-button:hover {
-            color: #ffffff;
-        }
-
-        /* Form Elements */
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 8px;
-            color: #b8c5d6;
-            font-weight: 500;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 12px 16px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.05);
-            color: #ffffff;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: #ffd700;
-            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
-        }
-
-        .form-select {
-            width: 100%;
-            padding: 12px 16px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.05);
-            color: #ffffff;
-            font-size: 1rem;
-            cursor: pointer;
-        }
-
-        /* Timeline styles */
-        .timeline-entry {
-            padding: 15px 0;
-            border-left: 2px solid rgba(255, 215, 0, 0.3);
-            padding-left: 20px;
-            margin-bottom: 15px;
-            position: relative;
-        }
-        
-        .timeline-entry::before {
-            content: '';
-            position: absolute;
-            left: -6px;
-            top: 20px;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #ffd700;
-            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-        }
-        
-        .timeline-date {
-            font-size: 0.8rem;
-            color: #b8c5d6;
-            margin-bottom: 5px;
-        }
-        
-        .timeline-content {
-            color: #ffffff;
-            font-weight: 500;
-        }
-
-        /* Ripple Animation */
-        @keyframes ripple-animation {
-            from {
-                transform: scale(0);
-                opacity: 1;
-            }
-            to {
-                transform: scale(2);
-                opacity: 0;
-            }
-        }
-
-        /* Notification System */
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(139, 92, 246, 0.9);
-            padding: 15px 20px;
-            border-radius: 10px;
-            color: white;
-            z-index: 2000;
-            transform: translateY(-100px);
-            opacity: 0;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .notification.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        /* User profile card */
-        .user-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .user-stats {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .stat-item {
-            text-align: center;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 10px;
-        }
-
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #ffd700;
-        }
-
-        .stat-label {
-            font-size: 0.8rem;
-            color: #b8c5d6;
-            margin-top: 5px;
-        }
-
-        /* Reports list */
-        .reports-list {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .report-item {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-left: 3px solid #ffd700;
-        }
-
-        .report-time {
-            font-size: 0.8rem;
-            color: #b8c5d6;
-            margin-bottom: 5px;
-        }
-
-        .report-type {
-            color: #ffd700;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .report-description {
-            color: #ffffff;
-            line-height: 1.4;
-        }
-
-        /* Loading states */
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #b8c5d6;
-        }
-
-        .loading::after {
-            content: '';
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255, 215, 0, 0.3);
-            border-radius: 50%;
-            border-top-color: #ffd700;
-            animation: spin 1s ease-in-out infinite;
-            margin-left: 10px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Responsive Design */
-        @media (max-width: 480px) {
-            #ui-overlay {
-                padding: 15px;
-            }
-            
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .status-panel {
-                padding: 20px;
-            }
-            
-            .nav-buttons {
-                grid-template-columns: repeat(3, 1fr);
-                gap: 8px;
-            }
-
-            .panel {
-                height: 85%;
-                padding: 20px 15px;
-            }
-        }
-
-        /* Quota Management Interface */
-        .quota-control {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 12px;
-            margin: 8px 0;
-        }
-
-        .quota-interface {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            margin: 8px 0;
-        }
-
-        .quota-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: 2px solid #8b5cf6;
-            background: rgba(139, 92, 246, 0.1);
-            color: #8b5cf6;
-            font-size: 20px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .quota-btn:hover {
-            background: rgba(139, 92, 246, 0.2);
-            transform: scale(1.1);
-        }
-
-        .quota-btn:active {
-            transform: scale(0.95);
-        }
-
-        .quota-count {
-            font-size: 24px;
-            font-weight: bold;
-            color: #8b5cf6;
-            min-width: 40px;
-            text-align: center;
-        }
-
-        .quota-preview {
-            font-size: 12px;
-            color: #a78bfa;
-            text-align: center;
-            margin-top: 4px;
-        }
-
-        /* Mute Controls */
-        .mute-controls {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 12px;
-            margin: 8px 0;
-        }
-
-        .mute-buttons {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            margin: 8px 0;
-            flex-wrap: wrap;
-        }
-
-        .mute-btn {
-            padding: 6px 12px;
-            border-radius: 16px;
-            border: 1px solid #6366f1;
-            background: rgba(99, 102, 241, 0.1);
-            color: #6366f1;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .mute-btn:hover {
-            background: rgba(99, 102, 241, 0.2);
-            transform: translateY(-1px);
-        }
-
-        .mute-btn.active {
-            background: #6366f1;
-            color: white;
-        }
-
-        .mute-status {
-            font-size: 12px;
-            color: #f59e0b;
-            text-align: center;
-            margin-top: 4px;
-        }
-
-        /* Social Media Preview Area */
-        .social-preview {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 16px;
-            margin: 12px 0;
-            border: 1px dashed rgba(139, 92, 246, 0.3);
-        }
-
-        .social-preview h4 {
-            margin: 0 0 8px 0;
-            font-size: 14px;
-            color: #8b5cf6;
-        }
-
-        .social-platforms {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-        }
-
-        .social-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 6px;
-            background: rgba(139, 92, 246, 0.1);
-            border: 1px solid rgba(139, 92, 246, 0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            opacity: 0.5;
-        }
-
-        .social-icon:hover {
-            opacity: 1;
-            transform: translateY(-2px);
-        }
-    </style>
+    <title>Ping Console</title>
+    <link rel="stylesheet" href="css/win95-refined.css">
+    <link rel="stylesheet" href="/css/win95.css">
 </head>
 <body>
-    <div class="cosmic-bg"></div>
-    <div class="sacred-overlay"></div>
-    <canvas id="three-canvas"></canvas>
-    
-    <div id="ui-overlay">
-        <div class="ui-section header">
-            <h1>🌀 Chronomancy</h1>
-            <p id="status-text">Temporal synchronization in progress...</p>
+    <div id="desktop" class="desktop">
+        <!-- Taskbar -->
+        <div class="taskbar">
+            <button class="start-button" onclick="toggleStartMenu()">
+                <span class="start-icon">⚡</span>
+                Start
+            </button>
+            <div class="taskbar-buttons">
+                <button class="taskbar-btn active" onclick="showWindow('ping-console')">Ping Console</button>
+            </div>
+            <div class="system-tray">
+                <span class="tray-time" id="tray-time">14:42</span>
+                <div class="connection-indicator" id="connection-status" title="Connected"></div>
+            </div>
         </div>
-        
-        <!-- Navigation Buttons -->
-        <div class="nav-buttons">
-            <div class="nav-button" onclick="showUserProfile()">
-                <span class="icon">👤</span>
-                Profile
+
+        <!-- Start Menu -->
+        <div id="start-menu" class="start-menu hidden">
+            <div class="start-menu-item" onclick="showWindow('ping-console')">
+                <span class="menu-icon">📡</span>
+                Ping Console
             </div>
-            <div class="nav-button" onclick="showActivity()">
-                <span class="icon">📈</span>
-                Activity
+            <div class="start-menu-item" onclick="showWindow('wallet')">
+                <span class="menu-icon">💰</span>
+                Wallet
             </div>
-            <div class="nav-button" onclick="showFutureMessages()">
-                <span class="icon">💭</span>
-                Messages
+            <div class="start-menu-item" onclick="showWindow('chain-walk')">
+                <span class="menu-icon">📈</span>
+                Chain Walk
             </div>
-            <div class="nav-button" onclick="showChallenges()">
-                <span class="icon">🎯</span>
-                Challenges
+            <div class="start-menu-item" onclick="showWindow('field-report')">
+                <span class="menu-icon">📝</span>
+                Field Report
             </div>
-            <div class="nav-button" onclick="showGlobalStats()">
-                <span class="icon">🌐</span>
-                Global
-            </div>
-            <div class="nav-button" onclick="openPanel('window-panel')">
-                <span class="icon">⚙️</span>
+            <div class="start-menu-separator"></div>
+            <div class="start-menu-item" onclick="showWindow('settings')">
+                <span class="menu-icon">⚙️</span>
                 Settings
             </div>
         </div>
-        
-        <div class="ui-section status-panel">
-            <div class="status-item">
-                <span class="status-label">Next Global Sync</span>
-                <span class="status-value" id="global-sync-time">14:37:22</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Current Window</span>
-                <span class="status-value" id="current-window">
-                    <span id="window-name">Loading...</span>
-                    <span class="window-indicator" id="window-icon">🌅</span>
-                </span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Active Pings</span>
-                <span class="status-value">
-                    <span id="active-pings">0</span>
-                    <div class="ping-indicator" id="ping-indicator"></div>
-                </span>
-            </div>
-            
-            <!-- Daily Quota Management -->
-            <div class="status-item quota-control">
-                <span class="status-label">Today's Pings</span>
-                <div class="quota-interface">
-                    <button class="quota-btn minus" id="quota-minus">−</button>
-                    <span class="quota-count" id="quota-count">3</span>
-                    <button class="quota-btn plus" id="quota-plus">+</button>
+
+        <!-- Primary Console Interface -->
+        <div id="ping-console" class="console-window">
+            <header class="window-header">
+                <span class="window-title">Ping Console</span>
+                <div class="window-controls">
+                    <button class="window-btn minimize">_</button>
+                    <button class="window-btn maximize">□</button>
+                    <button class="window-btn close" onclick="hideWindow('ping-console')">×</button>
                 </div>
-                <div class="quota-preview" id="quota-preview">Next ping in 2h 15m</div>
+            </header>
+
+            <div class="window-content">
+                <section class="status-section">
+                    <div class="system-status">
+                        <span class="status-label">System Time</span>
+                        <time class="system-clock" id="main-clock">14:42:17</time>
+                    </div>
+                </section>
+
+                <section class="control-group primary">
+                    <h2 class="control-title">Detection Window</h2>
+                    <div class="time-control">
+                        <div class="time-input-group">
+                            <label for="start-time" class="time-label">From</label>
+                            <input type="time" id="start-time" class="time-input" value="08:00">
+                        </div>
+                        <div class="time-separator">—</div>
+                        <div class="time-input-group">
+                            <label for="end-time" class="time-label">Until</label>
+                            <input type="time" id="end-time" class="time-input" value="20:00">
+                        </div>
+                    </div>
+                    <div class="calculated-info" id="window-duration">12 hours active</div>
+                </section>
+
+                <section class="control-group primary">
+                    <h2 class="control-title">Scan Frequency</h2>
+                    <div class="frequency-control">
+                        <button class="frequency-btn" onclick="adjustPings(-1)" aria-label="Decrease frequency">−</button>
+                        <div class="frequency-display">
+                            <span class="frequency-value" id="ping-count">3</span>
+                            <span class="frequency-unit">pings/day</span>
+                        </div>
+                        <button class="frequency-btn" onclick="adjustPings(1)" aria-label="Increase frequency">+</button>
+                    </div>
+                    <div class="calculated-info" id="frequency-interval">Every 4 hours</div>
+                </section>
+
+                <section class="control-group secondary">
+                    <div class="toggle-control">
+                        <input type="checkbox" id="mute-toggle" class="toggle-input">
+                        <label for="mute-toggle" class="toggle-label">
+                            <span class="toggle-text">Mute notifications</span>
+                            <span class="toggle-duration">24 hours</span>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="action-controls">
+                    <button class="action-btn primary" onclick="saveSettings()">
+                        Activate Temporal Scanning
+                    </button>
+                    <button class="action-btn secondary" onclick="showWindow('field-report')">
+                        Send Field Report
+                    </button>
+                </section>
+
+                <footer class="status-bar">
+                    <span id="status-text">Ready to scan for temporal anomalies</span>
+                </footer>
             </div>
-            
-            <!-- Quick Mute Controls -->
-            <div class="status-item mute-controls">
-                <span class="status-label">Quick Mute</span>
-                <div class="mute-buttons">
-                    <button class="mute-btn" data-duration="1">1h</button>
-                    <button class="mute-btn" data-duration="3">3h</button>
-                    <button class="mute-btn" data-duration="until-9am">Until 9AM</button>
-                    <button class="mute-btn active" id="unmute-btn" style="display: none;">Unmute</button>
+        </div>
+
+        <!-- Chain Walk/Betting Window -->
+        <div id="chain-walk" class="window hidden">
+            <div class="window-header">
+                <span class="window-title">Chain Walk - Temporal Price Oracle</span>
+                <div class="window-controls">
+                    <button class="window-btn minimize">_</button>
+                    <button class="window-btn maximize">□</button>
+                    <button class="window-btn close" onclick="hideWindow('chain-walk')">×</button>
                 </div>
-                <div class="mute-status" id="mute-status"></div>
             </div>
-            
-            <button class="button anomaly" id="anomaly-button">🔍 Report Anomaly</button>
-            <button class="button history" id="history-button">📊 View Timeline</button>
-        </div>
-    </div>
+            <div class="window-content">
+                <!-- Price Chart Section -->
+                <section class="chart-section">
+                    <div class="chart-header">
+                        <div class="price-display">
+                            <span class="price-label">Current Price</span>
+                            <span class="price-value" id="current-price">1.2847</span>
+                            <span class="price-change" id="price-change">+0.0023</span>
+                        </div>
+                        <div class="chart-info">
+                            <span class="chart-timeframe">Last 24 blocks</span>
+                            <span class="next-block" id="next-block">Next: 2m 15s</span>
+                        </div>
+                    </div>
+                    
+                    <div class="price-chart-container">
+                        <svg id="price-chart" class="price-chart" viewBox="0 0 400 120" preserveAspectRatio="xMidYMid meet">
+                            <!-- Grid lines -->
+                            <defs>
+                                <pattern id="grid" width="20" height="12" patternUnits="userSpaceOnUse">
+                                    <path d="M 20 0 L 0 0 0 12" fill="none" stroke="#e0e0e0" stroke-width="0.5"/>
+                                </pattern>
+                            </defs>
+                            <rect width="100%" height="100%" fill="url(#grid)" />
+                            
+                            <!-- Price line will be drawn here by JavaScript -->
+                            <polyline id="price-line" fill="none" stroke="#0066cc" stroke-width="2" points=""/>
+                            
+                            <!-- Current price indicator -->
+                            <circle id="current-point" cx="380" cy="60" r="3" fill="#0066cc" stroke="#ffffff" stroke-width="1"/>
+                        </svg>
+                    </div>
+                </section>
 
-    <!-- User Profile Panel -->
-    <div class="panel" id="profile-panel">
-        <div class="panel-header">
-            <h2 class="panel-title">👤 User Profile</h2>
-            <button class="close-button" onclick="closePanel('profile-panel')">&times;</button>
-        </div>
-        <div id="profile-content" class="loading">Loading profile...</div>
-    </div>
+                <!-- Betting Interface -->
+                <section class="betting-section">
+                    <div class="bet-header">
+                        <h3 class="section-title">Place Bet</h3>
+                        <div class="balance-info">
+                            <span class="balance-label">Available:</span>
+                            <span class="balance-amount" id="available-balance">150</span>
+                            <span class="balance-unit">CHR</span>
+                        </div>
+                    </div>
 
-    <!-- Activity Panel -->
-    <div class="panel" id="activity-panel">
-        <div class="panel-header">
-            <h2 class="panel-title">📈 Activity Statistics</h2>
-            <button class="close-button" onclick="closePanel('activity-panel')">&times;</button>
-        </div>
-        <div id="activity-content" class="loading">Loading activity...</div>
-    </div>
+                    <div class="bet-controls">
+                        <div class="direction-controls">
+                            <button class="direction-btn up" id="bet-up" onclick="selectDirection('up')" aria-label="Bet price will go up">
+                                <span class="direction-arrow">↑</span>
+                                <span class="direction-label">Up</span>
+                            </button>
+                            <button class="direction-btn down" id="bet-down" onclick="selectDirection('down')" aria-label="Bet price will go down">
+                                <span class="direction-arrow">↓</span>
+                                <span class="direction-label">Down</span>
+                            </button>
+                        </div>
 
-    <!-- Future Messages Panel -->
-    <div class="panel" id="messages-panel">
-        <div class="panel-header">
-            <h2 class="panel-title">💭 Future Messages</h2>
-            <button class="close-button" onclick="closePanel('messages-panel')">&times;</button>
-        </div>
-        <div id="messages-content" class="loading">Loading messages...</div>
-    </div>
+                        <div class="stake-controls">
+                            <label for="bet-amount" class="stake-label">Stake Amount</label>
+                            <div class="stake-input-group">
+                                <input type="number" id="bet-amount" class="stake-input" min="1" max="150" value="10">
+                                <span class="stake-unit">CHR</span>
+                            </div>
+                            <div class="stake-presets">
+                                <button class="preset-btn" onclick="setStake(5)">5</button>
+                                <button class="preset-btn" onclick="setStake(10)">10</button>
+                                <button class="preset-btn" onclick="setStake(25)">25</button>
+                                <button class="preset-btn" onclick="setStake(50)">50</button>
+                            </div>
+                        </div>
 
-    <!-- Challenges Panel -->
-    <div class="panel" id="challenges-panel">
-        <div class="panel-header">
-            <h2 class="panel-title">🎯 Temporal Challenges</h2>
-            <button class="close-button" onclick="closePanel('challenges-panel')">&times;</button>
-        </div>
-        <div id="challenges-content" class="loading">Loading challenges...</div>
-    </div>
+                        <div class="bet-summary">
+                            <div class="summary-row">
+                                <span class="summary-label">Direction:</span>
+                                <span class="summary-value" id="selected-direction">Select direction</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Potential Return:</span>
+                                <span class="summary-value" id="potential-return">—</span>
+                            </div>
+                        </div>
 
-    <!-- Global Stats Panel -->
-    <div class="panel" id="global-panel">
-        <div class="panel-header">
-            <h2 class="panel-title">🌐 Global Network</h2>
-            <button class="close-button" onclick="closePanel('global-panel')">&times;</button>
-        </div>
-        <div id="global-content" class="loading">Loading global stats...</div>
-    </div>
+                        <button class="action-btn primary bet-btn" id="place-bet-btn" onclick="placeBet()" disabled>
+                            Place Bet
+                        </button>
+                    </div>
+                </section>
 
-    <!-- Window Settings Panel -->
-    <div class="panel" id="window-panel">
-        <div class="panel-header">
-            <h2 class="panel-title">⚙️ Window Settings</h2>
-            <button class="close-button" onclick="closePanel('window-panel')">&times;</button>
-        </div>
-        <div id="window-content" class="loading">Loading settings...</div>
-    </div>
+                <!-- Bet History -->
+                <section class="history-section">
+                    <div class="history-header">
+                        <h3 class="section-title">Your Bets</h3>
+                        <div class="history-stats">
+                            <span class="stat-item">
+                                <span class="stat-label">Win Rate:</span>
+                                <span class="stat-value">67%</span>
+                            </span>
+                            <span class="stat-item">
+                                <span class="stat-label">Total P&L:</span>
+                                <span class="stat-value positive">+23 CHR</span>
+                            </span>
+                        </div>
+                    </div>
 
-    <!-- Anomaly Panel -->
-    <div class="panel" id="anomaly-panel">
-        <div class="panel-header">
-            <h2 class="panel-title">🔍 Anomaly Report</h2>
-            <button class="close-button" onclick="closePanel('anomaly-panel')">&times;</button>
-        </div>
-        <div class="form-group">
-            <label class="form-label">Observation Description</label>
-            <textarea class="form-input" id="anomaly-description" rows="4" placeholder="Describe what you observed during the temporal ping..."></textarea>
-        </div>
-        <div class="form-group">
-            <label class="form-label">Anomaly Type</label>
-            <select class="form-select" id="anomaly-type">
-                <option value="synchronistic">Synchronistic Event</option>
-                <option value="temporal_distortion">Temporal Distortion</option>
-                <option value="consciousness_shift">Consciousness Shift</option>
-                <option value="reality_glitch">Reality Glitch</option>
-                <option value="other">Other</option>
-            </select>
-        </div>
-        
-        <!-- Social Media Sharing Preview -->
-        <div class="social-preview">
-            <h4>📱 Share Your Discovery</h4>
-            <div class="social-platforms">
-                <div class="social-icon" title="TikTok (Coming Soon)">📱</div>
-                <div class="social-icon" title="Instagram (Coming Soon)">📷</div>
-                <div class="social-icon" title="Threads (Coming Soon)">🧵</div>
-                <div class="social-icon" title="Twitter/X (Coming Soon)">🐦</div>
+                    <div class="bet-list" id="bet-list">
+                        <div class="bet-list-header">
+                            <span class="col-time">Time</span>
+                            <span class="col-direction">Direction</span>
+                            <span class="col-stake">Stake</span>
+                            <span class="col-result">Result</span>
+                        </div>
+                        
+                        <!-- Sample bet entries -->
+                        <div class="bet-entry settled win">
+                            <span class="bet-time">14:23</span>
+                            <span class="bet-direction up">↑ Up</span>
+                            <span class="bet-stake">15 CHR</span>
+                            <span class="bet-result win">+12 CHR</span>
+                        </div>
+                        
+                        <div class="bet-entry settled loss">
+                            <span class="bet-time">13:45</span>
+                            <span class="bet-direction down">↓ Down</span>
+                            <span class="bet-stake">10 CHR</span>
+                            <span class="bet-result loss">-10 CHR</span>
+                        </div>
+                        
+                        <div class="bet-entry pending">
+                            <span class="bet-time">14:41</span>
+                            <span class="bet-direction up">↑ Up</span>
+                            <span class="bet-stake">25 CHR</span>
+                            <span class="bet-result pending">Pending</span>
+                        </div>
+                    </div>
+                </section>
             </div>
-            <div style="font-size: 11px; color: #a78bfa; text-align: center; margin-top: 6px;">
-                Social sharing coming soon
+        </div>
+
+        <!-- Wallet Window -->
+        <div id="wallet" class="window hidden">
+            <div class="window-header">
+                <span class="window-title">CHR Wallet</span>
+                <div class="window-controls">
+                    <button class="window-btn minimize">_</button>
+                    <button class="window-btn maximize">□</button>
+                    <button class="window-btn close" onclick="hideWindow('wallet')">×</button>
+                </div>
+            </div>
+            <div class="window-content">
+                <section class="wallet-overview">
+                    <div class="balance-display">
+                        <span class="balance-label">Balance</span>
+                        <span class="balance-value" id="chr-balance">0</span>
+                        <span class="balance-unit">CHR</span>
+                    </div>
+                    <div class="wallet-address">
+                        <span class="address-label">Address</span>
+                        <code class="address-value" id="wallet-address">Loading...</code>
+                    </div>
+                </section>
+
+                <section class="wallet-actions">
+                    <button class="action-btn primary" onclick="requestFaucet()" id="faucet-btn">
+                        Request Faucet (100 CHR)
+                    </button>
+                    <button class="action-btn secondary" onclick="showTransferDialog()">
+                        Transfer CHR
+                    </button>
+                    <button class="action-btn secondary" onclick="showWindow('chain-walk')">
+                        Bet on Chain Walk
+                    </button>
+                </section>
+
+                <section class="wallet-tabs">
+                    <div class="tab-buttons">
+                        <button class="tab-btn active" onclick="showWalletTab('transactions')">Transactions</button>
+                        <button class="tab-btn" onclick="showWalletTab('leaderboard')">Leaderboard</button>
+                    </div>
+
+                    <div id="transactions-tab" class="tab-content active">
+                        <div class="transaction-list" id="transaction-list">
+                            <div class="list-header">
+                                <span>Recent Transfers</span>
+                            </div>
+                            <div class="empty-state">
+                                No transactions yet
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="leaderboard-tab" class="tab-content hidden">
+                        <div class="leaderboard-list" id="leaderboard-list">
+                            <div class="list-header">
+                                <span>CHR Rich List</span>
+                            </div>
+                            <div class="loading-state">
+                                Loading leaderboard...
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </div>
         </div>
-        
-        <button class="button" onclick="submitAnomaly()">🌀 Submit to Temporal Archive</button>
-    </div>
 
-    <!-- History Panel -->
-    <div class="panel" id="history-panel">
-        <div class="panel-header">
-            <h2 class="panel-title">📊 Temporal Timeline</h2>
-            <button class="close-button" onclick="closePanel('history-panel')">&times;</button>
+        <!-- Transfer Dialog -->
+        <div id="transfer-dialog" class="modal hidden">
+            <div class="modal-content">
+                <header class="modal-header">
+                    <h2>Transfer CHR</h2>
+                    <button class="modal-close" onclick="hideWindow('transfer-dialog')">×</button>
+                </header>
+                <main class="modal-main">
+                    <div class="form-group">
+                        <label for="transfer-to">Recipient User ID</label>
+                        <input type="text" id="transfer-to" class="form-input" placeholder="Enter user ID">
+                    </div>
+                    <div class="form-group">
+                        <label for="transfer-amount">Amount</label>
+                        <input type="number" id="transfer-amount" class="form-input" min="1" placeholder="CHR amount">
+                    </div>
+                    <div class="modal-actions">
+                        <button class="action-btn primary" onclick="executeTransfer()">
+                            Send Transfer
+                        </button>
+                        <button class="action-btn secondary" onclick="hideWindow('transfer-dialog')">
+                            Cancel
+                        </button>
+                    </div>
+                </main>
+            </div>
         </div>
-        <div id="timeline-content" class="loading">Loading timeline...</div>
+
+        <!-- Field Report Window -->
+        <div id="field-report" class="window hidden">
+            <div class="window-header">
+                <span class="window-title">Field Report Transmission</span>
+                <div class="window-controls">
+                    <button class="window-btn close" onclick="hideWindow('field-report')">×</button>
+                </div>
+            </div>
+            <div class="window-content">
+                <section class="report-info">
+                    <div class="report-icon">📡</div>
+                    <h3>Transmit Field Report</h3>
+                    <p>Share observations with the research community at <strong>@lucidsurrealism</strong></p>
+                </section>
+
+                <section class="report-instructions">
+                    <ol class="instruction-list">
+                        <li>Document your findings</li>
+                        <li>Include relevant context</li>
+                        <li>Tag @lucidsurrealism</li>
+                    </ol>
+                </section>
+
+                <section class="action-controls">
+                    <button class="action-btn primary" onclick="openTelegram()">
+                        Open Telegram
+                    </button>
+                    <button class="action-btn secondary" onclick="hideWindow('field-report')">
+                        Cancel
+                    </button>
+                </section>
+            </div>
+        </div>
+
+        <!-- Settings Window -->
+        <div id="settings" class="window hidden">
+            <div class="window-header">
+                <span class="window-title">System Information</span>
+                <div class="window-controls">
+                    <button class="window-btn close" onclick="hideWindow('settings')">×</button>
+                </div>
+            </div>
+            <div class="window-content">
+                <div class="info-grid">
+                    <div class="info-section">
+                        <h3>Profile</h3>
+                        <dl class="info-list">
+                            <dt>User ID</dt>
+                            <dd id="user-id">demo_user</dd>
+                            <dt>Status</dt>
+                            <dd class="status-active">Active</dd>
+                            <dt>Timezone</dt>
+                            <dd>Auto-detect</dd>
+                        </dl>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>Statistics</h3>
+                        <dl class="info-list">
+                            <dt>Total Pings</dt>
+                            <dd>127</dd>
+                            <dt>This Week</dt>
+                            <dd>21</dd>
+                            <dt>Response Rate</dt>
+                            <dd>89%</dd>
+                            <dt>Avg Response</dt>
+                            <dd>2.3 min</dd>
+                        </dl>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>System</h3>
+                        <dl class="info-list">
+                            <dt>API Status</dt>
+                            <dd class="status-ok">Connected</dd>
+                            <dt>Last Sync</dt>
+                            <dd>2 minutes ago</dd>
+                            <dt>Version</dt>
+                            <dd>2.1.0</dd>
+                        </dl>
+                        <button class="action-btn secondary small" onclick="runDiagnostics()">
+                            Run Diagnostics
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container" class="toast-container"></div>
     </div>
 
-    <div class="notification" id="notification">
-        🌀 Temporal ping detected - Stay aware!
-    </div>
-
-    <script src="js/telegram-init.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/temporal-scene.js"></script>
-    <script src="js/app.js"></script>
+    <script src="/js/app.js"></script>
 </body>
-</html> 
+</html>
