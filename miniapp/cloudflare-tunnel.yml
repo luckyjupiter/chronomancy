@@ -1,1 +1,28 @@
-# Cloudflare Tunnel Configuration for Chronomancy Mini App\n# This configuration creates a secure tunnel to your self-hosted Mini App\n\ntunnel: bd403a16-db0a-4091-bab3-71f985d7742a\ncredentials-file: C:\Users\quant\.cloudflared\bd403a16-db0a-4091-bab3-71f985d7742a.json\n\n# Ingress rules\ningress:\n  # Mini App frontend and API\n  - hostname: chronomancy.yourdomain.com\n    service: http://localhost:5000\n    \n  # Optional: Direct bot webhook endpoint (if needed)\n  - hostname: chronomancy-bot.yourdomain.com\n    service: http://localhost:8443\n    \n  # Catch-all rule (required)\n  - service: http_status:404\n\n# Optional: Additional tunnel settings\nwarp-routing:\n  enabled: false\n\n# Logging\nlog:\n  level: info\n  \n# Metrics (optional)\nmetrics: 0.0.0.0:2000 
+############################################################
+# Cloudflare Tunnel Configuration for Chronomancy Mini-App #
+#   Scott Wilber note: keep config as plain YAML to avoid   #
+#   newline-escape bug seen earlier (canon.yaml › hygiene).  #
+############################################################
+
+tunnel: bd403a16-db0a-4091-bab3-71f985d7742a
+credentials-file: C:/Users/quant/.cloudflared/bd403a16-db0a-4091-bab3-71f985d7742a.json
+
+# Ingress rules
+ingress:
+  # Updated minimal UI server
+  - hostname: chronomancy.app
+    service: http://localhost:5001
+
+  # Catch-all (required)
+  - service: http_status:404
+
+# Optional: Additional tunnel settings
+warp-routing:
+  enabled: false
+
+# Logging
+log:
+  level: info
+
+# Metrics (optional)
+metrics: 0.0.0.0:2000 

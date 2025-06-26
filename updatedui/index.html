@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chronomancy - Temporal Scanner</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="css/win95-refined.css">
+    <style>
+        /* Scott Wilber's minimal activation energy design principles */
+        :root {
+            --primary-bg: var(--tg-theme-bg-color, #1a1a2e);
+            --secondary-bg: var(--tg-theme-secondary-bg-color, #16213e);
+            --text-color: var(--tg-theme-text-color, #eee);
+            --button-color: var(--tg-theme-button-color, #0f3460);
+            --button-text: var(--tg-theme-button-text-color, #ffffff);
+            --accent-color: #e94560;
+            --success-color: #0f4c75;
+            --muted-color: #666;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--primary-bg);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            font-size: 48px;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 0 10px rgba(233, 69, 96, 0.3));
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--text-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            opacity: 0.8;
+            font-style: italic;
+        }
+
+        .status-card {
+            background: var(--secondary-bg);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(233, 69, 96, 0.2);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .status-active {
+            border-color: var(--success-color);
+            background: linear-gradient(135deg, var(--secondary-bg), rgba(15, 76, 117, 0.2));
+        }
+
+        .status-inactive {
+            border-color: var(--muted-color);
+        }
+
+        .section {
+            background: var(--secondary-bg);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--accent-color);
+        }
+
+        .time-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .time-input {
+            flex: 1;
+            padding: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: var(--primary-bg);
+            color: var(--text-color);
+            font-size: 16px;
+            text-align: center;
+            transition: border-color 0.3s ease;
+        }
+
+        .time-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .time-separator {
+            font-weight: 600;
+            opacity: 0.7;
+        }
+
+        .frequency-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .frequency-btn {
+            width: 48px;
+            height: 48px;
+            border: 2px solid var(--accent-color);
+            background: transparent;
+            color: var(--accent-color);
+            border-radius: 12px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .frequency-btn:hover {
+            background: var(--accent-color);
+            color: var(--primary-bg);
+            transform: scale(1.05);
+        }
+
+        .frequency-display {
+            text-align: center;
+            min-width: 100px;
+        }
+
+        .frequency-count {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--accent-color);
+        }
+
+        .frequency-label {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-color), #c73650);
+            color: white;
+            box-shadow: 0 4px 20px rgba(233, 69, 96, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(233, 69, 96, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--secondary-bg);
+            color: var(--text-color);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .challenge-section {
+            background: linear-gradient(135deg, var(--secondary-bg), rgba(233, 69, 96, 0.1));
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .challenge-text {
+            font-style: italic;
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .anomaly-textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: var(--primary-bg);
+            color: var(--text-color);
+            font-size: 14px;
+            resize: vertical;
+            font-family: inherit;
+            transition: border-color 0.3s ease;
+        }
+
+        .anomaly-textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+
+        .rabbit-icon {
+            display: inline-block;
+            margin-right: 8px;
+            filter: drop-shadow(0 0 5px rgba(233, 69, 96, 0.5));
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 0 10px;
+            }
+            
+            .frequency-control {
+                gap: 15px;
+            }
+            
+            .frequency-btn {
+                width: 44px;
+                height: 44px;
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Timer Setup Screen -->
+        <div id="timer-screen">
+            <div class="header">
+                <div class="logo">🐰⏰</div>
+                <h1 class="title">Temporal Scanner</h1>
+                <p class="subtitle">Explore the hidden patterns of time</p>
+            </div>
+
+            <div id="status-card" class="status-card status-inactive">
+                <div id="status-text">Configure your scanning window to begin</div>
+            </div>
+
+            <div class="section">
+                <h3 class="section-title"><span class="rabbit-icon">🕐</span>Active Hours</h3>
+                <div class="time-controls">
+                    <input type="time" id="start-time" class="time-input" value="08:00">
+                    <span class="time-separator">to</span>
+                    <input type="time" id="end-time" class="time-input" value="20:00">
+                </div>
+            </div>
+
+            <div class="section">
+                <h3 class="section-title"><span class="rabbit-icon">📡</span>Scan Frequency</h3>
+                <div class="frequency-control">
+                    <button class="frequency-btn" onclick="adjustPings(-1)">−</button>
+                    <div class="frequency-display">
+                        <div id="ping-count" class="frequency-count">3</div>
+                        <div class="frequency-label">pings/day</div>
+                    </div>
+                    <button class="frequency-btn" onclick="adjustPings(1)">+</button>
+                </div>
+            </div>
+
+            <button id="activate-btn" class="btn btn-primary" onclick="activateTimer()">
+                🚀 Start Temporal Scanning
+            </button>
+
+            <button class="btn btn-secondary" onclick="muteTimer()">
+                🔇 Mute for 24 hours
+            </button>
+        </div>
+
+        <!-- Anomaly Reporting Screen -->
+        <div id="anomaly-screen" class="hidden">
+            <div class="header">
+                <div class="logo">🔍✨</div>
+                <h1 class="title">Anomaly Detected</h1>
+                <p class="subtitle">The temporal field is shifting around you</p>
+            </div>
+
+            <div class="challenge-section">
+                <div id="challenge-text" class="challenge-text">
+                    Loading scanning challenge...
+                </div>
+            </div>
+
+            <div class="section">
+                <h3 class="section-title"><span class="rabbit-icon">📝</span>Your Observations</h3>
+                <textarea id="anomaly-description" class="anomaly-textarea" 
+                         placeholder="Describe what you observe... unusual sounds, sights, feelings, coincidences, or patterns that catch your attention..."></textarea>
+            </div>
+
+            <button class="btn btn-primary" onclick="submitAnomaly()">
+                📝 Record Observation
+            </button>
+
+            <button class="btn btn-secondary" onclick="skipAnomaly()">
+                ⏭️ Nothing to report
+            </button>
+
+            <button class="btn btn-secondary" onclick="showTimerScreen()">
+                ⚙️ Back to Settings
+            </button>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html> 

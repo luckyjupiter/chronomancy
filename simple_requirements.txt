@@ -1,0 +1,16 @@
+# Chronomancy Simple - Minimal Dependencies
+# Scott Wilber's canonical minimal activation energy principle
+
+# Core Telegram bot functionality
+pyTelegramBotAPI==4.14.0
+python-dotenv==1.0.0
+
+# Simple web server for mini app
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Data handling
+pydantic==2.5.0
+
+# That's it! No blockchain, no complex entropy, no mesh networking.
+# Just pure temporal scanning functionality. 
