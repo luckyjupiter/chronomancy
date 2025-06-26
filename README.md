@@ -57,4 +57,4 @@ Open http://localhost:5000 (or your tunnel URL) and hit **🚀 Start Temporal Sc
 
 ---
 
-> "Randomness is just unmodelled causality." — *Scott Wilber* 
+> "Randomness is just unmodelled causality."
