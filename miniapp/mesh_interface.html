@@ -15,57 +15,48 @@ Scott Wilber justification: Front-end must evoke strong memetic resonance while 
     <style>
         /* CSS custom properties for Win95 palette (Dieter Rams: one source of truth) */
         :root{
-            /* Mid-95 Dark cohesive palette */
-            --bg-plate:#202428;            /* desktop / taskbar */
-            --bg-panel:#2e3136;            /* window faces */
-            --bg-sunken:#1a1c1f;           /* inset wells */
-            --bevel-hi:#4d5157;
-            --bevel-lo:#0e0f10;
-
-            --chrome-dark:#002060;         /* title-bar gradient L */
-            --chrome-light:#0040c0;        /* title-bar gradient R */
-
-            --accent:#00e3ff;              /* cyan highlight */
-            --txt-main:#d8dee9;
-            --txt-dim:#a0a6b0;
+            --win95-gray-light:#c0c0c0;
+            --win95-gray-dark:#808080;
+            --win95-blue-dark:#000080;
+            --win95-blue-light:#0000ff;
         }
         *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:'MS Sans Serif',sans-serif;background:var(--bg-plate);color:var(--txt-main);overflow:hidden;height:100vh;width:100vw;max-width:100%;cursor:default}
+        body{font-family:'MS Sans Serif',sans-serif;background:#008080;color:#000;overflow:hidden;height:100vh;width:100vw;max-width:100%;cursor:default}
         .desktop{position:absolute;top:0;left:0;width:100%;height:100%;/* grid removed per audit */}
         #three-canvas{position:absolute;top:30px;left:0;width:100%;height:calc(100% - 70px);z-index:1;opacity:.2}
-        .taskbar{position:fixed;bottom:0;left:0;width:100%;height:40px;background:linear-gradient(to bottom,var(--bg-panel) 0%,var(--bg-sunken) 100%);border-top:2px solid var(--bevel-hi);display:flex;align-items:center;padding:0 4px;z-index:1000}
-        .start-button{height:32px;padding:0 12px;background:linear-gradient(to bottom,var(--bg-panel) 0%,var(--bg-sunken) 100%);border:2px outset var(--bevel-hi);font-family:'MS Sans Serif',sans-serif;font-size:11px;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:4px;color:var(--accent)}
-        .start-button:active{border:2px inset var(--bevel-hi)}
-        .taskbar-time{margin-left:auto;padding:0 8px;height:32px;background:linear-gradient(to bottom,var(--bg-panel) 0%,var(--bg-sunken) 100%);border:1px inset var(--bevel-hi);display:flex;align-items:center;font-size:11px;color:var(--txt-main)}
-        .title-bar{position:fixed;top:0;left:0;width:100%;height:30px;background:linear-gradient(to right,var(--chrome-dark) 0%,var(--chrome-light) 100%);color:#fff;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:bold;z-index:999}
+        .taskbar{position:fixed;bottom:0;left:0;width:100%;height:40px;background:linear-gradient(to bottom,var(--win95-gray-light) 0%,var(--win95-gray-dark) 100%);border-top:2px solid #fff;display:flex;align-items:center;padding:0 4px;z-index:1000;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
+        .start-button{height:32px;padding:0 12px;background:linear-gradient(to bottom,#c0c0c0 0%,#808080 100%);border:2px outset #c0c0c0;font-family:'MS Sans Serif',sans-serif;font-size:11px;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:4px}
+        .start-button:active{border:2px inset #c0c0c0}
+        .taskbar-time{margin-left:auto;padding:0 8px;height:32px;background:linear-gradient(to bottom,#c0c0c0 0%,#808080 100%);border:1px inset #c0c0c0;display:flex;align-items:center;font-size:11px}
+        .title-bar{position:fixed;top:0;left:0;width:100%;height:30px;background:linear-gradient(to right,#000080 0%,#0000ff 100%);color:#fff;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:bold;z-index:999}
         .title-text{flex:1;text-align:center;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .window{position:absolute;background:var(--bg-panel);border:2px outset var(--bevel-hi);min-width:300px;min-height:200px;z-index:100;display:none}
+        .window{position:absolute;background:var(--win95-gray-light);border:2px outset var(--win95-gray-light);min-width:300px;min-height:200px;z-index:100;display:none}
         .window.active{display:block;z-index:200}
-        .window-header{height:18px;background:linear-gradient(to right,var(--chrome-dark) 0%,var(--chrome-light) 100%);display:flex;align-items:center;padding:0 4px;color:#fff;font-size:11px;font-weight:bold;cursor:move}
+        .window-header{height:18px;background:linear-gradient(to right,#000080 0%,#0000ff 100%);display:flex;align-items:center;padding:0 4px;color:#fff;font-size:11px;font-weight:bold;cursor:move}
         .window-title{flex:1}
         .window-controls{display:flex;gap:2px}
         .window-button{width:16px;height:14px;background:#c0c0c0;border:1px outset #c0c0c0;font-size:8px;cursor:pointer;display:flex;align-items:center;justify-content:center}
         .window-button:active{border:1px inset #c0c0c0}
-        .window-content{padding:8px;background:var(--bg-panel);height:calc(100% - 18px);overflow:auto;color:var(--txt-main)}
-        .welcome-card{text-align:center;padding:20px;background:var(--bg-sunken);border:2px inset var(--bevel-lo);margin:10px}
+        .window-content{padding:8px;background:#c0c0c0;height:calc(100% - 18px);overflow:auto}
+        .welcome-card{text-align:center;padding:20px;background:#fff;border:2px inset #c0c0c0;margin:10px}
         .logo{font-size:24px;font-weight:bold;color:#000080;margin-bottom:10px}
         .tagline{font-size:12px;margin-bottom:20px;color:#000}
-        .win95-button{background:linear-gradient(to bottom,var(--bg-panel) 0%,var(--bg-sunken) 100%);border:2px outset var(--bevel-hi);padding:6px 16px;font-size:11px;cursor:pointer;margin:4px;font-family:'MS Sans Serif',sans-serif;color:var(--txt-main)}
-        .win95-button:active{border:2px inset var(--bevel-hi)}
+        .win95-button{background:linear-gradient(to bottom,#c0c0c0 0%,#808080 100%);border:2px outset #c0c0c0;padding:6px 16px;font-size:11px;cursor:pointer;margin:4px;font-family:'MS Sans Serif',sans-serif}
+        .win95-button:active{border:2px inset #c0c0c0}
         .win95-button:hover{background:linear-gradient(to bottom,#d0d0d0 0%,#909090 100%)}
-        .win95-button.primary{background:linear-gradient(to bottom,var(--chrome-dark) 0%,var(--chrome-light) 100%);color:#fff;font-weight:bold}
+        .win95-button.primary{background:linear-gradient(to bottom,#000080 0%,#0000ff 100%);color:#fff;font-weight:bold}
         .progress-ring{width:120px;height:120px;margin:20px auto;position:relative}
         .progress-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
         .progress-ring-bg{fill:none;stroke:#808080;stroke-width:8}
         .progress-ring-fill{fill:none;stroke:#000080;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .3s ease}
         .progress-ring-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;font-size:12px;font-weight:bold}
-        .entropy-panel{background:var(--bg-sunken);border:2px inset var(--bevel-lo);padding:8px;margin:8px 0}
+        .entropy-panel{background:#fff;border:2px inset #c0c0c0;padding:8px;margin:8px 0}
         .entropy-row{display:flex;justify-content:space-between;align-items:center;margin:4px 0;font-size:11px}
         .entropy-stars{color:#000080}
         .entropy-value{font-weight:bold;font-family:'Courier New',monospace}
-        .sparkline-container{background:var(--bg-sunken);border:2px inset var(--bevel-lo);padding:8px;margin:8px 0;height:80px;cursor:pointer}
+        .sparkline-container{background:#fff;border:2px inset #c0c0c0;padding:8px;margin:8px 0;height:80px;cursor:pointer}
         .sparkline{width:100%;height:100%}
-        .status-log{background:var(--bg-sunken);border:2px inset var(--bevel-lo);padding:8px;height:120px;overflow-y:auto;font-size:11px;font-family:'Courier New',monospace;color:var(--txt-main)}
+        .status-log{background:#fff;border:2px inset #c0c0c0;padding:8px;height:120px;overflow-y:auto;font-size:11px;font-family:'Courier New',monospace}
         .log-entry{margin:2px 0;display:flex;align-items:center}
         .log-icon{margin-right:4px;font-weight:bold}
         .log-icon.success{color:#008000}.log-icon.info{color:#000080}.log-icon.warning{color:#ff8000}.log-icon.error{color:#ff0000}
@@ -75,7 +66,7 @@ Scott Wilber justification: Front-end must evoke strong memetic resonance while 
         .toast-banner.show{display:block;animation:slideDown .3s ease}
         .modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:999}
         .modal.show{display:flex}
-        .modal-content{background:var(--bg-panel);border:2px outset var(--bevel-hi);padding:16px;max-width:400px;text-align:center;color:var(--txt-main)}
+        .modal-content{background:#c0c0c0;border:2px outset #c0c0c0;padding:16px;max-width:400px;text-align:center}
         .modal-title{font-weight:bold;margin-bottom:12px;color:#000080}
         .permission-icons{display:flex;justify-content:center;gap:20px;margin:16px 0}
         .permission-icon{text-align:center;font-size:24px}
@@ -84,7 +75,7 @@ Scott Wilber justification: Front-end must evoke strong memetic resonance while 
         .blinking{animation:blink 1s infinite}
         @keyframes glow{0%,100%{box-shadow:0 0 5px #0f0}50%{box-shadow:0 0 20px #0f0}}
         .glowing{animation:glow .5s ease-in-out}
-        .settings-group{margin:12px 0;padding:8px;background:var(--bg-sunken);border:1px solid var(--bevel-hi)}
+        .settings-group{margin:12px 0;padding:8px;background:#fff;border:1px solid #808080}
         .settings-label{font-weight:bold;font-size:11px;margin-bottom:4px}
         .slider-container{display:flex;align-items:center;gap:8px}
         .slider{flex:1;height:4px;background:#808080;border:1px inset #c0c0c0;cursor:pointer;position:relative}
@@ -106,11 +97,35 @@ Scott Wilber justification: Front-end must evoke strong memetic resonance while 
             margin: 8px 0;
             resize: vertical;
         }
-        .wallet-field{font-family:'Courier New',monospace;font-size:11px;word-break:break-all;background:var(--bg-sunken);border:1px solid var(--bevel-hi);padding:4px;margin:4px 0;color:var(--txt-main)}
-        .chain-field{font-family:'Courier New',monospace;font-size:11px;word-break:break-all;background:var(--bg-sunken);border:1px solid var(--bevel-hi);padding:4px;margin:4px 0;color:var(--txt-main)}
-        .walk-field{font-family:'Courier New',monospace;font-size:20px;text-align:center;background:var(--bg-sunken);border:2px inset var(--bevel-lo);padding:6px;margin:8px 0;color:var(--accent)}
+        .wallet-field {
+            font-family:'Courier New',monospace;
+            font-size:11px;
+            word-break:break-all;
+            background:#fff;
+            border:1px solid #808080;
+            padding:4px;
+            margin:4px 0;
+        }
+        .chain-field{
+            font-family:'Courier New',monospace;
+            font-size:11px;
+            word-break:break-all;
+            background:#fff;
+            border:1px solid #808080;
+            padding:4px;
+            margin:4px 0;
+        }
+        .walk-field{
+            font-family:'Courier New',monospace;
+            font-size:20px;
+            text-align:center;
+            background:#fff;
+            border:2px inset #808080;
+            padding:6px;
+            margin:8px 0;
+        }
         /* Tufte-style sidenote tooltips */
-        .help-icon{display:inline-block;width:14px;height:14px;line-height:14px;background:var(--chrome-dark);color:#fff;font-size:11px;font-weight:bold;text-align:center;border-radius:50%;margin-left:6px;cursor:help;position:relative;user-select:none}
+        .help-icon{display:inline-block;width:14px;height:14px;line-height:14px;background:#000080;color:#fff;font-size:11px;font-weight:bold;text-align:center;border-radius:50%;margin-left:6px;cursor:help;position:relative;user-select:none}
         .help-icon .tooltip{display:none;position:absolute;left:16px;top:-4px;z-index:2000;max-width:240px;padding:6px;background:#ffffe0;border:1px solid #808080;color:#000;font-size:10px;font-family:'MS Sans Serif',sans-serif;box-shadow:2px 2px 4px rgba(0,0,0,.3)}
         .help-icon:hover .tooltip{display:block}
         .help-icon:hover{filter:brightness(1.2)}
@@ -122,10 +137,6 @@ Scott Wilber justification: Front-end must evoke strong memetic resonance while 
             .title-bar{transform:translateY(-100%);transition:transform .3s ease;}
             .title-bar:hover{transform:translateY(0);}
         }
-        .control-strip{position:fixed;bottom:40px;left:0;width:100%;height:36px;background:var(--bg-panel);border-top:2px solid var(--bevel-hi);border-bottom:2px solid var(--bevel-lo);display:flex;align-items:center;gap:16px;padding:0 8px;font-size:11px;color:var(--accent);z-index:1001}
-        .cs-btn{background:linear-gradient(to bottom,var(--bg-sunken) 0%,#0d0e10 100%);border:2px outset var(--bevel-hi);font-size:11px;padding:2px 8px;color:var(--accent);cursor:pointer}
-        .cs-btn:active{border:2px inset var(--bevel-hi)}
-        .overlay-dark{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;}
     </style>
 </head>
 <body>
@@ -169,14 +180,6 @@ Scott Wilber justification: Front-end must evoke strong memetic resonance while 
             <div class="settings-group"><div class="settings-label">Debug Options</div><label style="font-size:11px;"><input type="checkbox" id="debug-log"> Show debug log</label></div>
             <div style="text-align:center;margin-top:16px;"><button class="win95-button" onclick="exportHistory()">Export Trace History</button></div>
         </div>
-    </div>
-    <div class="control-strip">
-        <span id="cs-window" title="Ping window">🕒 -- : -- – -- : --</span>
-        <button id="cs-dec" class="cs-btn" title="Fewer pings">➖</button>
-        <span id="cs-count" title="Daily ping quota">⧗ 0</span>
-        <button id="cs-inc" class="cs-btn" title="More pings">➕</button>
-        <button id="cs-mute" class="cs-btn" title="Mute 1 h">⏸️</button>
-        <button id="cs-quantum" class="cs-btn" title="Quantum Point">⚛️</button>
     </div>
     <div class="taskbar"><div class="start-button" onclick="showStartMenu()"><span>🚀 Start</span></div><div class="taskbar-time" id="taskbar-time">12:34 PM</div></div>
     <!-- Timer Window -->
@@ -275,13 +278,21 @@ Scott Wilber justification: Front-end must evoke strong memetic resonance while 
             <div id="bet-status" style="font-size:10px;color:#000080;margin-top:8px;"></div>
         </div>
     </div>
+    <!-- Dashboard Window -->
+    <div class="window active" id="dashboard-window" style="top:60px; left:20px; width:300px; height:240px;">
+        <div class="window-header"><span class="window-title">📋 Dashboard</span><div class="window-controls"><div class="window-button" onclick="closeWindow('dashboard-window')">×</div></div></div>
+        <div class="window-content" id="dash-content" style="font-size:11px;">
+            <div style="margin-bottom:8px;">Ping window: <span id="dash-window">--</span> <button class="win95-button" style="font-size:10px;" onclick="openWizardWindow()">Edit</button></div>
+            <div style="margin-bottom:8px;">Daily count: <span id="dash-count">--</span> <button class="win95-button" style="font-size:10px;" onclick="addPing()">+1</button></div>
+            <button class="win95-button" style="width:100%;margin-bottom:6px;" onclick="muteOneHour()">⏸️ Mute 1 h</button>
+            <button class="win95-button primary" style="width:100%;" onclick="requestQuantum()">⚛️ Quantum Point (-1 CHR)</button>
+            <div id="dash-status" style="margin-top:6px;color:#000080;font-size:10px;"></div>
+        </div>
+    </div>
     <!-- Quick-Start Alarm Wizard (hidden after first run) -->
-    <div id="wizard" class="overlay-dark" style="display:none;font-family:'MS Sans Serif',sans-serif;">
-        <div id="wizard-box" class="window active center-x" style="top:80px;width:360px;min-height:220px;">
-            <div class="window-header"><span class="window-title" id="wizard-title">🕒 Alarm Setup</span></div>
-            <div class="window-content" id="wizard-step" style="text-align:center;font-size:11px;">
-                <!-- content injected by JS -->
-            </div>
+    <div id="wizard" style="position:fixed;inset:0;background:rgba(0,64,64,.95);color:#fff;display:none;z-index:2000;font-family:'MS Sans Serif',sans-serif;">
+        <div id="wizard-step" style="max-width:340px;padding:20px;margin:60px auto;background:#000080;border:2px outset var(--win95-gray-light);text-align:center;">
+            <!-- content injected by JS -->
         </div>
     </div>
 <script>
@@ -303,7 +314,7 @@ function closeWindow(id){document.getElementById(id).classList.remove('active');
 function startContributing(){unlockSampler();}
 function showDetailedLog(){const w=document.createElement('div');w.className='window active';w.style.cssText='top: 150px; left: 200px; width: 450px; height: 300px; z-index: 300;';w.innerHTML=`<div class="window-header"><span class="window-title">📈 Detailed Compression Log</span><div class="window-controls"><div class="window-button" onclick="this.parentElement.parentElement.parentElement.remove()">×</div></div></div><div class="window-content"><table class="data-table" style="width: 100%; font-size: 10px;"><thead><tr><th>Epoch</th><th>Compression</th><th>Cap (kHz)</th><th>Status</th></tr></thead><tbody>${compressionHistory.slice(-10).map((r,i)=>`<tr><td>${currentEpoch-compressionHistory.length+i+1}</td><td>${r.toFixed(3)}</td><td>${Math.floor(r*200+100)}</td><td>${r<.8?'✓ PASS':'✗ FAIL'}</td></tr>`).join('')}</tbody></table></div>`;document.body.appendChild(w);}
 function exportHistory(){const csv=['Epoch,Compression_Ratio,Cap_kHz,Timestamp',...compressionHistory.map((r,i)=>`${currentEpoch-compressionHistory.length+i+1},${r.toFixed(4)},${Math.floor(r*200+100)},${new Date().toISOString()}`)].join('\n');const blob=new Blob([csv],{type:'text/csv'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`chronomancy_trace_${new Date().toISOString().split('T')[0]}.csv`;a.click();URL.revokeObjectURL(url);}
-function showStartMenu(){const menu=document.createElement('div');menu.style.cssText='position:fixed;bottom:40px;left:4px;background:#c0c0c0;border:2px outset #c0c0c0;min-width:200px;z-index:1001;font-size:11px;';menu.innerHTML='<div style="padding: 4px 8px; cursor: pointer; border-bottom: 1px solid #808080;" onclick="openWindow(\'session-window\')">📊 Live Session</div><div style="padding: 4px 8px; cursor: pointer; border-bottom: 1px solid #808080;" onclick="openWindow(\'settings-window\')">⚙️ Settings</div><div style="padding: 4px 8px; cursor: pointer; border-bottom: 1px solid #808080;" onclick="openWallet()">💰 Wallet</div><div style="padding: 4px 8px; cursor: pointer; border-bottom: 1px solid #808080;" onclick="openChain()">⛓️ Chain</div><div style="padding: 4px 8px; cursor: pointer; border-bottom: 1px solid #808080;" onclick="openBoard()">🏆 Leaderboard</div><div style="padding: 4px 8px; cursor: pointer; border-bottom: 1px solid #808080;" onclick="openWindow(\'bet-window\');fetchWalk()">🎲 Bets</div><div style="padding: 4px 8px; cursor: pointer; border-bottom: 1px solid #808080;" onclick="openWindow(\'about-window\')">🛈 About</div><div style="padding: 4px 8px; cursor: pointer;" onclick="this.parentElement.remove()">🚪 Close Menu</div>';const existing=document.querySelector('[style*="bottom: 40px"]');if(existing)existing.remove();document.body.appendChild(menu);setTimeout(()=>{if(menu.parentElement)menu.remove();},4000);}
+function showStartMenu(){const menu=document.createElement('div');menu.style.cssText='position:fixed;bottom:40px;left:4px;background:#c0c0c0;border:2px outset #c0c0c0;min-width:200px;z-index:1001;font-size:11px;';menu.innerHTML='<div style="padding: 4px 8px; cursor: pointer; border-bottom: 1px solid #808080;" onclick="openWindow(\'dashboard-window\')">📋 Dashboard</div><div style="padding: 4px 8px; cursor: pointer; border-bottom: 1px solid #808080;" onclick="openWindow(\'session-window\')">📊 Live Session</div><div style="padding: 4px 8px; cursor: pointer; border-bottom: 1px solid #808080;" onclick="openWindow(\'settings-window\')">⚙️ Settings</div><div style="padding: 4px 8px; cursor: pointer; border-bottom: 1px solid #808080;" onclick="openWallet()">💰 Wallet</div><div style="padding: 4px 8px; cursor: pointer; border-bottom: 1px solid #808080;" onclick="openChain()">⛓️ Chain</div><div style="padding: 4px 8px; cursor: pointer; border-bottom: 1px solid #808080;" onclick="openBoard()">🏆 Leaderboard</div><div style="padding: 4px 8px; cursor: pointer; border-bottom: 1px solid #808080;" onclick="openWindow(\'bet-window\');fetchWalk()">🎲 Bets</div><div style="padding: 4px 8px; cursor: pointer; border-bottom: 1px solid #808080;" onclick="openWindow(\'about-window\')">🛈 About</div><div style="padding: 4px 8px; cursor: pointer;" onclick="this.parentElement.remove()">🚪 Close Menu</div>';const existing=document.querySelector('[style*="bottom: 40px"]');if(existing)existing.remove();document.body.appendChild(menu);setTimeout(()=>{if(menu.parentElement)menu.remove();},4000);}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)showToast('App in background. Sampling slows to ~10 kHz; pulse still counts.');});
 document.addEventListener('mousedown',e=>{if(e.target.classList.contains('slider-thumb')){const slider=e.target.parentElement,rect=slider.getBoundingClientRect();function move(ev){const x=Math.max(0,Math.min(ev.clientX-rect.left,rect.width));const pct=x/rect.width*100;e.target.style.left=pct+'%';}document.addEventListener('mousemove',move);document.addEventListener('mouseup',()=>document.removeEventListener('mousemove',move),{once:true});}});
 function updateTime(){const now=new Date();const t=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});document.getElementById('taskbar-time').textContent=t;}
@@ -364,7 +375,7 @@ function launchWizard(){
    let pingCount=4;
    function render(){
        if(step===0){
-           stepBox.innerHTML=`<p style='margin-bottom:8px;'>Hi <b>${telegramUser}</b>!</p><p style='margin:8px 0;'>Your system clock says <b>${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</b> in <b>${tz}</b>.</p><p style='margin:12px 0;'>Is that correct?</p><button class='win95-button primary' style='margin:4px;' onclick='nextStep()'>Yes</button><button class='win95-button' style='margin:4px;' onclick='changeTZ()'>Change…</button>`;
+           stepBox.innerHTML=`<h3 style='margin-bottom:12px;'>Clock check</h3><p style='margin:8px 0;'>It is <b>${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</b> in <b>${tz}</b>.</p><p style='margin:12px 0;'>Is that correct?</p><button class='win95-button primary' style='margin:4px;' onclick='nextStep()'>Yes</button><button class='win95-button' style='margin:4px;' onclick='changeTZ()'>Change…</button>`;
        }else if(step===1){
            stepBox.innerHTML=`<h3 style='margin-bottom:12px;'>Ping window</h3><p style='margin:8px;'>Alarms may ring between:</p><input type='time' id='wStart' value='${winStart}' style='font-size:11px;'> &nbsp;–&nbsp; <input type='time' id='wEnd' value='${winEnd}' style='font-size:11px;'><p style='margin-top:16px;'><button class='win95-button primary' onclick='saveWindow()'>Next</button></p>`;
        }else if(step===2){
@@ -386,8 +397,6 @@ function launchWizard(){
            });
            // notify bot
            await fetch(`/api/user/${uid}/future-messages`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:'Welcome to Chronomancy! I will send you random alarms starting today.'})});
-           // immediate test ping
-           await fetch(`/api/user/${uid}/test-ping`,{method:'POST'});
        }catch(e){}
        localStorage.setItem('wizardDone','1');
        wiz.style.display='none';
@@ -398,17 +407,19 @@ function launchWizard(){
    render();
 }
 document.addEventListener('DOMContentLoaded',launchWizard);
-function loadWindowSettings(){fetch(`/api/user/123/window`).then(r=>r.json()).then(js=>{if(js.window_start){document.getElementById('cs-window').textContent=`🕒 ${js.window_start} – ${js.window_end}`;document.getElementById('cs-count').textContent=`⧗ ${js.daily_count}`;}else{openWizardWindow();}}).catch(()=>{openWizardWindow();});}
+// Dashboard helpers
+async function loadDashboard(){try{const uid=123;const res=await fetch(`/api/user/${uid}/window`);if(!res.ok)throw new Error();const js=await res.json();document.getElementById('dash-window').textContent=`${js.window_start||'--'} – ${js.window_end||'--'}`;document.getElementById('dash-count').textContent=js.daily_count;}catch(e){}}
+document.addEventListener('DOMContentLoaded',loadDashboard);
 
-async function changePing(delta){try{const res=await fetch(`/api/user/123/window`);const js=await res.json();let newCnt=(js.daily_count||4)+delta;if(newCnt<1)newCnt=1;if(newCnt>9)newCnt=9;await fetch(`/api/user/123/window`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...js,daily_count:newCnt})});document.getElementById('cs-count').textContent=`⧗ ${newCnt}`;showToast(`Daily pings: ${newCnt}`);}catch(e){showToast('Ping update failed');}}
+async function addPing(){try{const uid=123;const res=await fetch(`/api/user/${uid}/window`);const js=await res.json();const newCnt=(js.daily_count||0)+1;await fetch(`/api/user/${uid}/window`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...js,daily_count:newCnt})});document.getElementById('dash-count').textContent=newCnt;document.getElementById('dash-status').textContent='Ping +1 added';}catch(e){document.getElementById('dash-status').textContent='Error adding ping';}}
 
-const incPing=()=>changePing(1);
-const decPing=()=>changePing(-1);
+async function muteOneHour(){try{const uid=123;await fetch(`/api/user/${uid}/mute`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({duration_hours:1})});document.getElementById('dash-status').textContent='Muted for 1 hour';}catch(e){document.getElementById('dash-status').textContent='Mute failed';}}
 
-function initControlStrip(){loadWindowSettings();document.getElementById('cs-window').onclick=openWizardWindow;document.getElementById('cs-inc').onclick=incPing;document.getElementById('cs-dec').onclick=decPing;document.getElementById('cs-mute').onclick=muteOneHour;document.getElementById('cs-quantum').onclick=requestQuantum;}
-document.addEventListener('DOMContentLoaded',initControlStrip);
+async function requestQuantum(){try{const uid=123;const res=await fetch(`/api/user/${uid}/qrng`);if(!res.ok)throw new Error(await res.text());document.getElementById('dash-status').textContent='Quantum Point granted!';refreshWalletBalance();}catch(e){document.getElementById('dash-status').textContent='Quantum request failed';}}
 
 function openWizardWindow(){localStorage.removeItem('wizardDone');launchWizard();}
+
+async function refreshWalletBalance(){try{const uid=123;const res=await fetch(`/api/user/${uid}/wallet`);const js=await res.json();document.getElementById('wallet-balance').textContent=js.balance+' CHR';}catch(e){}}
 </script>
 </body>
 </html>
