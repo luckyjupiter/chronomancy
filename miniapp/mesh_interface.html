@@ -193,7 +193,9 @@ Scott Wilber justification: Front-end must evoke strong memetic resonance while 
     </div>
     <div class="control-strip">
         <span id="cs-window" title="Ping window">🕒 -- : -- – -- : --</span>
-        <span id="cs-count" title="Pings seen / quota">⧗ 0 / 0</span>
+        <button id="cs-dec" class="cs-btn" title="Fewer pings">➖</button>
+        <span id="cs-count" title="Daily ping quota">⧗ 0</span>
+        <button id="cs-inc" class="cs-btn" title="More pings">➕</button>
         <button id="cs-mute" class="cs-btn" title="Mute 1 h">⏸️</button>
         <button id="cs-quantum" class="cs-btn" title="Quantum Point">⚛️</button>
     </div>
@@ -295,9 +297,12 @@ Scott Wilber justification: Front-end must evoke strong memetic resonance while 
         </div>
     </div>
     <!-- Quick-Start Alarm Wizard (hidden after first run) -->
-    <div id="wizard" style="position:fixed;inset:0;background:rgba(0,64,64,.95);color:#fff;display:none;z-index:2000;font-family:'MS Sans Serif',sans-serif;">
-        <div id="wizard-step" style="max-width:340px;padding:20px;margin:60px auto;background:#000080;border:2px outset var(--win95-gray-light);text-align:center;">
-            <!-- content injected by JS -->
+    <div id="wizard" style="position:fixed;inset:0;background:rgba(0,32,32,.92);display:none;z-index:2000;font-family:'MS Sans Serif',sans-serif;">
+        <div id="wizard-box" class="window active center-x" style="top:80px;width:360px;min-height:220px;">
+            <div class="window-header"><span class="window-title" id="wizard-title">🕒 Alarm Setup</span></div>
+            <div class="window-content" id="wizard-step" style="text-align:center;font-size:11px;">
+                <!-- content injected by JS -->
+            </div>
         </div>
     </div>
 <script>
@@ -380,7 +385,7 @@ function launchWizard(){
    let pingCount=4;
    function render(){
        if(step===0){
-           stepBox.innerHTML=`<h3 style='margin-bottom:12px;'>Clock check</h3><p style='margin:8px 0;'>It is <b>${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</b> in <b>${tz}</b>.</p><p style='margin:12px 0;'>Is that correct?</p><button class='win95-button primary' style='margin:4px;' onclick='nextStep()'>Yes</button><button class='win95-button' style='margin:4px;' onclick='changeTZ()'>Change…</button>`;
+           stepBox.innerHTML=`<p style='margin-bottom:8px;'>Hi <b>${telegramUser}</b>!</p><p style='margin:8px 0;'>Your system clock says <b>${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</b> in <b>${tz}</b>.</p><p style='margin:12px 0;'>Is that correct?</p><button class='win95-button primary' style='margin:4px;' onclick='nextStep()'>Yes</button><button class='win95-button' style='margin:4px;' onclick='changeTZ()'>Change…</button>`;
        }else if(step===1){
            stepBox.innerHTML=`<h3 style='margin-bottom:12px;'>Ping window</h3><p style='margin:8px;'>Alarms may ring between:</p><input type='time' id='wStart' value='${winStart}' style='font-size:11px;'> &nbsp;–&nbsp; <input type='time' id='wEnd' value='${winEnd}' style='font-size:11px;'><p style='margin-top:16px;'><button class='win95-button primary' onclick='saveWindow()'>Next</button></p>`;
        }else if(step===2){
@@ -414,15 +419,14 @@ function launchWizard(){
    render();
 }
 document.addEventListener('DOMContentLoaded',launchWizard);
-function loadWindowSettings(){fetch(`/api/user/123/window`).then(r=>r.json()).then(js=>{if(js.window_start){document.getElementById('cs-window').textContent=`🕒 ${js.window_start} – ${js.window_end}`;document.getElementById('cs-count').textContent=`⧗ 0 / ${js.daily_count}`;}}).catch(()=>{});}
+function loadWindowSettings(){fetch(`/api/user/123/window`).then(r=>r.json()).then(js=>{if(js.window_start){document.getElementById('cs-window').textContent=`🕒 ${js.window_start} – ${js.window_end}`;document.getElementById('cs-count').textContent=`⧗ ${js.daily_count}`;}}).catch(()=>{});}
 
-async function addPing(){try{const res=await fetch(`/api/user/123/window`);const js=await res.json();const newCnt=(js.daily_count||0)+1;await fetch(`/api/user/123/window`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...js,daily_count:newCnt})});document.getElementById('cs-count').textContent=`⧗ 0 / ${newCnt}`;showToast('+1 daily ping');}catch(e){showToast('Ping add failed');}}
+async function changePing(delta){try{const res=await fetch(`/api/user/123/window`);const js=await res.json();let newCnt=(js.daily_count||4)+delta;if(newCnt<1)newCnt=1;if(newCnt>9)newCnt=9;await fetch(`/api/user/123/window`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...js,daily_count:newCnt})});document.getElementById('cs-count').textContent=`⧗ ${newCnt}`;showToast(`Daily pings: ${newCnt}`);}catch(e){showToast('Ping update failed');}}
 
-async function muteOneHour(){try{await fetch(`/api/user/123/mute`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({duration_hours:1})});showToast('Muted 1 hour');}catch(e){showToast('Mute failed');}}
+const incPing=()=>changePing(1);
+const decPing=()=>changePing(-1);
 
-async function requestQuantum(){try{const res=await fetch(`/api/user/123/qrng`);if(!res.ok)throw new Error();showToast('Quantum Point granted');}catch(e){showToast('Quantum failed');}}
-
-function initControlStrip(){loadWindowSettings();document.getElementById('cs-window').onclick=()=>{openWizardWindow();};document.getElementById('cs-count').onclick=addPing;document.getElementById('cs-mute').onclick=muteOneHour;document.getElementById('cs-quantum').onclick=requestQuantum;}
+function initControlStrip(){loadWindowSettings();document.getElementById('cs-window').onclick=openWizardWindow;document.getElementById('cs-inc').onclick=incPing;document.getElementById('cs-dec').onclick=decPing;document.getElementById('cs-mute').onclick=muteOneHour;document.getElementById('cs-quantum').onclick=requestQuantum;}
 document.addEventListener('DOMContentLoaded',initControlStrip);
 
 function openWizardWindow(){localStorage.removeItem('wizardDone');launchWizard();}
