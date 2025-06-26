@@ -15,43 +15,45 @@ Scott Wilber justification: Front-end must evoke strong memetic resonance while 
     <style>
         /* CSS custom properties for Win95 palette (Dieter Rams: one source of truth) */
         :root{
-            --win95-gray-light:#c0c0c0;
-            --win95-gray-dark:#808080;
-            --win95-blue-dark:#000080;
-            --win95-blue-light:#0000ff;
-            /* dark mode */
-            --plate:#202020;
-            --bevel-light:#404040;
-            --bevel-dark:#000000;
-            --title-dark:#001b66;
-            --title-light:#0033cc;
-            --accent:#00ffff;
+            /* Mid-95 Dark cohesive palette */
+            --bg-plate:#202428;            /* desktop / taskbar */
+            --bg-panel:#2e3136;            /* window faces */
+            --bg-sunken:#1a1c1f;           /* inset wells */
+            --bevel-hi:#4d5157;
+            --bevel-lo:#0e0f10;
+
+            --chrome-dark:#002060;         /* title-bar gradient L */
+            --chrome-light:#0040c0;        /* title-bar gradient R */
+
+            --accent:#00e3ff;              /* cyan highlight */
+            --txt-main:#d8dee9;
+            --txt-dim:#a0a6b0;
         }
         *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:'MS Sans Serif',sans-serif;background:linear-gradient(135deg,#004350 0%,#002830 100%);color:#00f0f0;overflow:hidden;height:100vh;width:100vw;max-width:100%;cursor:default}
+        body{font-family:'MS Sans Serif',sans-serif;background:var(--bg-plate);color:var(--txt-main);overflow:hidden;height:100vh;width:100vw;max-width:100%;cursor:default}
         .desktop{position:absolute;top:0;left:0;width:100%;height:100%;/* grid removed per audit */}
         #three-canvas{position:absolute;top:30px;left:0;width:100%;height:calc(100% - 70px);z-index:1;opacity:.2}
-        .taskbar{position:fixed;bottom:0;left:0;width:100%;height:40px;background:linear-gradient(to bottom,var(--win95-gray-light) 0%,var(--win95-gray-dark) 100%);border-top:2px solid #fff;display:flex;align-items:center;padding:0 4px;z-index:1000;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
-        .start-button{height:32px;padding:0 12px;background:linear-gradient(to bottom,#c0c0c0 0%,#808080 100%);border:2px outset #c0c0c0;font-family:'MS Sans Serif',sans-serif;font-size:11px;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:4px}
-        .start-button:active{border:2px inset #c0c0c0}
-        .taskbar-time{margin-left:auto;padding:0 8px;height:32px;background:linear-gradient(to bottom,#c0c0c0 0%,#808080 100%);border:1px inset #c0c0c0;display:flex;align-items:center;font-size:11px}
-        .title-bar{position:fixed;top:0;left:0;width:100%;height:30px;background:linear-gradient(to right,var(--title-dark) 0%,var(--title-light) 100%);color:#fff;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:bold;z-index:999}
+        .taskbar{position:fixed;bottom:0;left:0;width:100%;height:40px;background:linear-gradient(to bottom,var(--bg-panel) 0%,var(--bg-sunken) 100%);border-top:2px solid var(--bevel-hi);display:flex;align-items:center;padding:0 4px;z-index:1000}
+        .start-button{height:32px;padding:0 12px;background:linear-gradient(to bottom,var(--bg-panel) 0%,var(--bg-sunken) 100%);border:2px outset var(--bevel-hi);font-family:'MS Sans Serif',sans-serif;font-size:11px;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:4px;color:var(--accent)}
+        .start-button:active{border:2px inset var(--bevel-hi)}
+        .taskbar-time{margin-left:auto;padding:0 8px;height:32px;background:linear-gradient(to bottom,var(--bg-panel) 0%,var(--bg-sunken) 100%);border:1px inset var(--bevel-hi);display:flex;align-items:center;font-size:11px;color:var(--txt-main)}
+        .title-bar{position:fixed;top:0;left:0;width:100%;height:30px;background:linear-gradient(to right,var(--chrome-dark) 0%,var(--chrome-light) 100%);color:#fff;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:bold;z-index:999}
         .title-text{flex:1;text-align:center;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .window{position:absolute;background:var(--win95-gray-light);border:2px outset var(--win95-gray-light);min-width:300px;min-height:200px;z-index:100;display:none}
+        .window{position:absolute;background:var(--bg-panel);border:2px outset var(--bevel-hi);min-width:300px;min-height:200px;z-index:100;display:none}
         .window.active{display:block;z-index:200}
-        .window-header{height:18px;background:linear-gradient(to right,#000080 0%,#0000ff 100%);display:flex;align-items:center;padding:0 4px;color:#fff;font-size:11px;font-weight:bold;cursor:move}
+        .window-header{height:18px;background:linear-gradient(to right,var(--chrome-dark) 0%,var(--chrome-light) 100%);display:flex;align-items:center;padding:0 4px;color:#fff;font-size:11px;font-weight:bold;cursor:move}
         .window-title{flex:1}
         .window-controls{display:flex;gap:2px}
         .window-button{width:16px;height:14px;background:#c0c0c0;border:1px outset #c0c0c0;font-size:8px;cursor:pointer;display:flex;align-items:center;justify-content:center}
         .window-button:active{border:1px inset #c0c0c0}
-        .window-content{padding:8px;background:#c0c0c0;height:calc(100% - 18px);overflow:auto}
+        .window-content{padding:8px;background:var(--bg-panel);height:calc(100% - 18px);overflow:auto;color:var(--txt-main)}
         .welcome-card{text-align:center;padding:20px;background:#fff;border:2px inset #c0c0c0;margin:10px}
         .logo{font-size:24px;font-weight:bold;color:#000080;margin-bottom:10px}
         .tagline{font-size:12px;margin-bottom:20px;color:#000}
-        .win95-button{background:linear-gradient(to bottom,#c0c0c0 0%,#808080 100%);border:2px outset #c0c0c0;padding:6px 16px;font-size:11px;cursor:pointer;margin:4px;font-family:'MS Sans Serif',sans-serif}
-        .win95-button:active{border:2px inset #c0c0c0}
+        .win95-button{background:linear-gradient(to bottom,var(--bg-panel) 0%,var(--bg-sunken) 100%);border:2px outset var(--bevel-hi);padding:6px 16px;font-size:11px;cursor:pointer;margin:4px;font-family:'MS Sans Serif',sans-serif;color:var(--txt-main)}
+        .win95-button:active{border:2px inset var(--bevel-hi)}
         .win95-button:hover{background:linear-gradient(to bottom,#d0d0d0 0%,#909090 100%)}
-        .win95-button.primary{background:linear-gradient(to bottom,#000080 0%,#0000ff 100%);color:#fff;font-weight:bold}
+        .win95-button.primary{background:linear-gradient(to bottom,var(--chrome-dark) 0%,var(--chrome-light) 100%);color:#fff;font-weight:bold}
         .progress-ring{width:120px;height:120px;margin:20px auto;position:relative}
         .progress-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
         .progress-ring-bg{fill:none;stroke:#808080;stroke-width:8}
@@ -144,9 +146,10 @@ Scott Wilber justification: Front-end must evoke strong memetic resonance while 
             .title-bar{transform:translateY(-100%);transition:transform .3s ease;}
             .title-bar:hover{transform:translateY(0);}
         }
-        .control-strip{position:fixed;bottom:40px;left:0;width:100%;height:36px;background:var(--plate);border-top:2px solid var(--bevel-light);border-bottom:2px solid var(--bevel-dark);display:flex;align-items:center;gap:16px;padding:0 8px;font-size:11px;color:var(--accent);z-index:1001}
-        .cs-btn{background:linear-gradient(to bottom,#2f2f2f 0%,#151515 100%);border:2px outset #555;font-size:11px;padding:2px 8px;color:var(--accent);cursor:pointer}
-        .cs-btn:active{border:2px inset #555}
+        .control-strip{position:fixed;bottom:40px;left:0;width:100%;height:36px;background:var(--bg-panel);border-top:2px solid var(--bevel-hi);border-bottom:2px solid var(--bevel-lo);display:flex;align-items:center;gap:16px;padding:0 8px;font-size:11px;color:var(--accent);z-index:1001}
+        .cs-btn{background:linear-gradient(to bottom,var(--bg-sunken) 0%,#0d0e10 100%);border:2px outset var(--bevel-hi);font-size:11px;padding:2px 8px;color:var(--accent);cursor:pointer}
+        .cs-btn:active{border:2px inset var(--bevel-hi)}
+        .overlay-dark{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;}
     </style>
 </head>
 <body>
