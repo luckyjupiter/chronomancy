@@ -70,7 +70,9 @@ def init_db():
                 window_end TEXT,
                 daily_count INTEGER DEFAULT 0,
                 tz_offset INTEGER DEFAULT NULL,
-                muted_until TEXT DEFAULT NULL
+                muted_until TEXT DEFAULT NULL,
+                is_backer INTEGER DEFAULT 0,
+                donate_skip INTEGER DEFAULT 0
             )"""
     )
     # Ensure tz_offset exists even on older DBs
@@ -131,6 +133,24 @@ def init_db():
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )"""
     )
+
+    # Add is_backer column
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN is_backer INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
+
+    # Ensure NULLs -> 0 (older rows)
+    cur.execute("UPDATE users SET is_backer = 0 WHERE is_backer IS NULL")
+
+    # Add donate_skip column
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN donate_skip INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
+
+    cur.execute("UPDATE users SET donate_skip = 0 WHERE donate_skip IS NULL")
+
     con.commit()
     return con
 
@@ -832,9 +852,18 @@ def _cache_ping(chat_id: int, msg_id: int, ping_id: int):
 
 def send_ping(chat_id: int, text: str, ping_type: str, user_id: Optional[int] = None) -> None:
     """Send a ping message and record it in the database.
-    
+
     According to Scott Wilber's methodology, pings should provide immediate
     access to anomaly reporting interfaces for optimal temporal synchronization.
+
+    NOTE:  A single global SQLite connection object (`CONN`) caused *thread-affinity*
+    errors once the alarm loop (background thread) and the FastAPI thread both
+    started sending pings.  Even with `check_same_thread=False` SQLite will still
+    complain if the connection is *used* concurrently by two threads.  To keep
+    things rock-solid we now open a **fresh connection per call**.  The overhead
+    is negligible at a handful of pings per day, and we avoid the race entirely
+    (Scott Wilber recommends isolated handles for each async execution context
+    anyway).
     """
     try:
         # Create Mini App button for quick access to anomaly reporting
@@ -847,21 +876,32 @@ def send_ping(chat_id: int, text: str, ping_type: str, user_id: Optional[int] = 
         
         sent_msg = bot.send_message(chat_id, text, reply_markup=webapp_keyboard)
         
-        # Record in database
-        with CONN:
-            cur = CONN.execute(
+        # Record in database (thread-local connection)
+        with sqlite3.connect(DB_PATH, check_same_thread=False) as _con:
+            cur = _con.execute(
                 "INSERT INTO pings(chat_id, user_id, ping_type, sent_msg_id, sent_at_utc) VALUES (?,?,?,?,?)",
                 (chat_id, user_id or chat_id, ping_type, sent_msg.message_id, dt.datetime.utcnow().isoformat())
             )
             ping_id = cur.lastrowid
             _cache_ping(chat_id, sent_msg.message_id, ping_id)
+
+        logger.info(f"Ping sent to {chat_id} (msg_id={sent_msg.message_id})")
+
+        # Donation prompt every 5th ping
+        if not is_backer(chat_id):
+            cur = CONN.execute(
+                "SELECT COUNT(*) FROM pings WHERE chat_id=?", (chat_id,)
+            )
+            total_pings = cur.fetchone()[0] or 0
+            if total_pings % 5 == 0:
+                show_donation_footer(chat_id)
     except Exception as e:
         logger.error(f"Failed to send ping to {chat_id}: {e}")
         # Fallback without keyboard
         try:
             sent_msg = bot.send_message(chat_id, text)
-            with CONN:
-                cur = CONN.execute(
+            with sqlite3.connect(DB_PATH, check_same_thread=False) as _con:
+                cur = _con.execute(
                     "INSERT INTO pings(chat_id, user_id, ping_type, sent_msg_id, sent_at_utc) VALUES (?,?,?,?,?)",
                     (chat_id, user_id or chat_id, ping_type, sent_msg.message_id, dt.datetime.utcnow().isoformat())
                 )
@@ -1065,6 +1105,68 @@ def log_anomaly(user_id: int, description: str) -> bool:
 
 # Expose database path for external access
 db_path = DB_PATH
+
+# ---------------------------------------------------------------------------
+# Donation / Backer helpers (Scott Wilber 2025-06-27)
+# ---------------------------------------------------------------------------
+
+TON_WALLET = "UQCsOuQxtjxWHJ4U8D4G8CGo9DGtpp5MPvkJLXIegibVie2I"
+
+
+def is_backer(chat_id: int) -> bool:
+    row = CONN.execute("SELECT is_backer FROM users WHERE chat_id=?", (chat_id,)).fetchone()
+    return bool(row and row[0])
+
+
+def inc_donate_skip(chat_id: int) -> None:
+    with CONN:
+        CONN.execute(
+            "UPDATE users SET donate_skip = COALESCE(donate_skip,0) + 1 WHERE chat_id=?",
+            (chat_id,),
+        )
+
+
+def donate_skips(chat_id: int) -> int:
+    row = CONN.execute("SELECT donate_skip FROM users WHERE chat_id=?", (chat_id,)).fetchone()
+    return row[0] if row else 0
+
+
+def show_donation_footer(chat_id: int):
+    """Prompt the user with a TON donation footer inline-keyboard."""
+    if is_backer(chat_id):
+        return
+    if donate_skips(chat_id) >= 3:
+        return
+
+    url = (
+        f"ton://transfer/{TON_WALLET}?amount=5000000000&text={chat_id}"
+    )
+
+    kb = InlineKeyboardMarkup()
+    kb.row(
+        InlineKeyboardButton("💎 Support with TON", url=url),
+        InlineKeyboardButton("Skip", callback_data="skip_donate"),
+    )
+
+    bot.send_message(
+        chat_id,
+        "✨ Liked that ping? Fuel the Beacon\nDonate ≥5 TON once for lifetime premium.\n🔒 Do **not** edit the ‘comment’ field; it links your payment to your account.",
+        reply_markup=kb,
+    )
+
+# ---------------------------------------------------------------------------
+# Callback handlers
+# ---------------------------------------------------------------------------
+
+@bot.callback_query_handler(func=lambda c: c.data == "skip_donate")
+def cb_skip_donate(call: CallbackQuery):
+    inc_donate_skip(call.message.chat.id)
+    bot.answer_callback_query(call.id, "Got it – no problem!")
+    bot.edit_message_reply_markup(
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        reply_markup=None,
+    )
 
 if __name__ == "__main__":
     main() 
