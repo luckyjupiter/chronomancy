@@ -85,7 +85,8 @@ async def get_user_status(user_id: int):
             "window_end": settings.get("window_end", "20:00"),
             "daily_count": settings.get("daily_count", 3),
             "is_muted": settings.get("is_muted", False),
-            "muted_until": settings.get("muted_until")
+            "muted_until": settings.get("muted_until"),
+            "is_backer": settings.get("is_backer", False)
         })
     except Exception as e:
         print(f"Error getting user status: {e}")
@@ -96,7 +97,8 @@ async def get_user_status(user_id: int):
             "window_end": "20:00",
             "daily_count": 3,
             "is_muted": False,
-            "muted_until": None
+            "muted_until": None,
+            "is_backer": False
         })
 
 @app.post("/api/user/{user_id}/timer")
@@ -112,15 +114,22 @@ async def update_user_timer(user_id: int, timer_data: dict):
         )
         
         if success:
-            # Send confirmation via Telegram bot
+            # Attempt to send confirmation via Telegram bot
+            confirmation_sent = False
             try:
                 from bot.main import bot as telegram_bot
                 telegram_bot.send_message(
                     user_id,
                     f"✅ Scanner activated! I will ping you {timer_data['daily_count']} time(s) per day between {timer_data['window_start']} and {timer_data['window_end']}.")
+                confirmation_sent = True
             except Exception as e:
                 print(f"⚠️  Could not send confirmation message: {e}")
-            return JSONResponse({"status": "success", "message": "Timer updated"})
+
+            return JSONResponse({
+                "status": "success",
+                "message": "Timer updated",
+                "confirmation_sent": confirmation_sent
+            })
         else:
             raise HTTPException(status_code=500, detail="Failed to update timer")
             
@@ -176,6 +185,11 @@ async def get_scanning_challenge():
 async def health_check():
     """Health check endpoint"""
     return JSONResponse({"status": "healthy", "message": "Chronomancy Updated UI Server"})
+
+@app.get("/theory")
+async def serve_theory():
+    """Serve theory primer page"""
+    return FileResponse(BASE_DIR / "theory.html")
 
 @app.on_event("startup")
 async def startup_event():

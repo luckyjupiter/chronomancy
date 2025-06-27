@@ -71,8 +71,9 @@ def init_db():
                 daily_count INTEGER DEFAULT 0,
                 tz_offset INTEGER DEFAULT NULL,
                 muted_until TEXT DEFAULT NULL,
-                is_backer INTEGER DEFAULT 0,
-                donate_skip INTEGER DEFAULT 0
+                is_backer INTEGER NOT NULL DEFAULT 0,
+                donate_skip INTEGER NOT NULL DEFAULT 0,
+                nft_id TEXT DEFAULT NULL
             )"""
     )
     # Ensure tz_offset exists even on older DBs
@@ -150,6 +151,12 @@ def init_db():
         pass
 
     cur.execute("UPDATE users SET donate_skip = 0 WHERE donate_skip IS NULL")
+
+    # Add nft_id column for Lifetime PSI NFT mapping
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN nft_id TEXT DEFAULT NULL")
+    except sqlite3.OperationalError:
+        pass
 
     con.commit()
     return con
@@ -989,12 +996,12 @@ def get_user_timer_settings(user_id: int) -> dict:
     """Get timer settings for a user (for Mini App API)"""
     try:
         cur = CONN.execute(
-            "SELECT window_start, window_end, daily_count, tz_offset, muted_until FROM users WHERE chat_id=?", 
+            "SELECT window_start, window_end, daily_count, tz_offset, muted_until, is_backer, donate_skip FROM users WHERE chat_id=?", 
             (user_id,)
         )
         row = cur.fetchone()
         if row:
-            ws, we, count, tz, muted_until = row
+            ws, we, count, tz, muted_until, is_backer, donate_skip = row
             
             # Check if muted
             is_muted = False
@@ -1005,6 +1012,9 @@ def get_user_timer_settings(user_id: int) -> dict:
                 except:
                     pass
             
+            backer_row = CONN.execute("SELECT is_backer FROM users WHERE chat_id=?", (user_id,)).fetchone()
+            is_backer_flag = bool(backer_row and backer_row[0])
+
             return {
                 "active": bool(ws and we and count and count > 0),
                 "window_start": ws,
@@ -1012,7 +1022,9 @@ def get_user_timer_settings(user_id: int) -> dict:
                 "daily_count": count or 0,
                 "tz_offset": tz,
                 "is_muted": is_muted,
-                "muted_until": muted_until
+                "muted_until": muted_until,
+                "is_backer": is_backer_flag,
+                "donate_skip": donate_skip
             }
         else:
             return {
@@ -1022,11 +1034,13 @@ def get_user_timer_settings(user_id: int) -> dict:
                 "daily_count": 0,
                 "tz_offset": None,
                 "is_muted": False,
-                "muted_until": None
+                "muted_until": None,
+                "is_backer": False,
+                "donate_skip": 0
             }
     except Exception as e:
         logger.error(f"Error getting user timer settings: {e}")
-        return {"active": False, "window_start": None, "window_end": None, "daily_count": 0, "tz_offset": None, "is_muted": False, "muted_until": None}
+        return {"active": False, "window_start": None, "window_end": None, "daily_count": 0, "tz_offset": None, "is_muted": False, "muted_until": None, "is_backer": False, "donate_skip": 0}
 
 def set_user_timer(user_id: int, window_start: str, window_end: str, daily_count: int, tz_offset: int = 0) -> bool:
     """Set timer settings for a user (for Mini App API)"""
@@ -1150,7 +1164,7 @@ def show_donation_footer(chat_id: int):
 
     bot.send_message(
         chat_id,
-        "✨ Liked that ping? Fuel the Beacon\nDonate ≥5 TON once for lifetime premium.\n🔒 Do **not** edit the ‘comment’ field; it links your payment to your account.",
+        "✨ Liked that ping? Fuel the Beacon\nDonate ≥5 TON once for lifetime premium (Lifetime PSI Pass).\n🔒 Do **not** edit the 'comment' field; it links your payment to your account.",
         reply_markup=kb,
     )
 
@@ -1167,6 +1181,38 @@ def cb_skip_donate(call: CallbackQuery):
         message_id=call.message.message_id,
         reply_markup=None,
     )
+
+# ---------------------------------------------------------------------------
+# Support / Lifetime pass command
+# ---------------------------------------------------------------------------
+
+@bot.message_handler(commands=["support", "pass"])
+def handle_support(m: Message):
+    chat_id = m.chat.id
+    if is_backer(chat_id):
+        bot.reply_to(m, "🔑 You already own a Lifetime PSI Pass — thank you!")
+        return
+
+    url = f"ton://transfer/{TON_WALLET}?amount=5000000000&text={chat_id}"
+    kb = InlineKeyboardMarkup()
+    kb.row(InlineKeyboardButton("💎 Buy Lifetime PSI Pass", url=url))
+    bot.reply_to(
+        m,
+        "Lifetime PSI Pass — unlock unlimited premium entropy forever (one-time ≥5 TON, never pay again).",
+        reply_markup=kb,
+    )
+
+# ---------------------------------------------------------------------------
+# Backer minting stub (would run in payment monitor)
+# ---------------------------------------------------------------------------
+
+def mark_backer(chat_id: int, nft_id: str):
+    """Mark user as backer and store NFT id (stub)."""
+    with CONN:
+        CONN.execute(
+            "UPDATE users SET is_backer=1, nft_id=? WHERE chat_id=?",
+            (nft_id, chat_id),
+        )
 
 if __name__ == "__main__":
     main() 
