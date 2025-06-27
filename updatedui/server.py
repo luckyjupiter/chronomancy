@@ -10,20 +10,43 @@ import os
 import sys
 from pathlib import Path
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+import stripe
+from dotenv import load_dotenv
+import sqlite3
+from telebot import types
+
+# Load environment variables
+load_dotenv()
 
 # Add project root to path for imports
 ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT_DIR))
 
+# Configure Stripe
+stripe_key = os.getenv("STRIPE_API_KEY") or os.getenv("stripe_api_key")
+if stripe_key:
+    stripe.api_key = stripe_key
+    print("✅ Stripe API key loaded from environment")
+else:
+    print("⚠️  Warning: STRIPE_API_KEY not found in environment variables")
+    print("📝 Create a .env file in this directory with: STRIPE_API_KEY=sk_test_your_secret_key")
+
 # Import backend functionality
 bot_functions_available = False
 try:
     sys.path.append(str(ROOT_DIR))
-    from bot.main import get_user_timer_settings, set_user_timer, mute_user_timer, log_anomaly, get_challenge
+    from bot.main import (
+        get_user_timer_settings,
+        set_user_timer,
+        mute_user_timer,
+        log_anomaly,
+        get_challenge,
+        bot as telegram_bot,
+    )
     bot_functions_available = True
     print("✅ Successfully imported bot functions")
 except ImportError as e:
@@ -48,6 +71,16 @@ except ImportError as e:
     
     def get_challenge():
         return "Scan your surroundings for anything unusual..."
+
+    # Dummy telegram_bot so code referencing it does not crash in fallback mode
+    class _DummyBot:
+        def process_new_updates(self, updates):
+            pass
+
+        def send_message(self, *args, **kwargs):
+            print("[DummyBot] send_message", args, kwargs)
+
+    telegram_bot = _DummyBot()
 
 # Initialize FastAPI app
 app = FastAPI(title="Chronomancy Updated UI", version="1.0.0")
@@ -117,13 +150,17 @@ async def update_user_timer(user_id: int, timer_data: dict):
             # Attempt to send confirmation via Telegram bot
             confirmation_sent = False
             try:
-                from bot.main import bot as telegram_bot
+                print(f"📱 Attempting to send confirmation to user {user_id}")
                 telegram_bot.send_message(
                     user_id,
                     f"✅ Scanner activated! I will ping you {timer_data['daily_count']} time(s) per day between {timer_data['window_start']} and {timer_data['window_end']}.")
                 confirmation_sent = True
+                print(f"✅ Confirmation message sent successfully to user {user_id}")
             except Exception as e:
-                print(f"⚠️  Could not send confirmation message: {e}")
+                print(f"⚠️  Could not send confirmation message to user {user_id}: {e}")
+                print(f"⚠️  Exception type: {type(e).__name__}")
+                print(f"⚠️  This likely means the user hasn't started the bot yet")
+                confirmation_sent = False
 
             return JSONResponse({
                 "status": "success",
@@ -186,35 +223,114 @@ async def health_check():
     """Health check endpoint"""
     return JSONResponse({"status": "healthy", "message": "Chronomancy Updated UI Server"})
 
+@app.post("/api/create-checkout-session")
+async def create_checkout_session(request_data: dict):
+    """Create Stripe checkout session for lifetime pass"""
+    try:
+        user_info = request_data.get("user_info", {})
+        
+        # Create checkout session
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'usd',
+                    'product_data': {
+                        'name': 'Chronomancy Lifetime PSI Pass',
+                        'description': 'Unlimited premium access to all Chronomancy features forever',
+                    },
+                    'unit_amount': 5000,  # $50.00 in cents
+                },
+                'quantity': 1,
+            }],
+            mode='payment',
+            success_url='https://chronomancy.app/lifetime?success=true',
+            cancel_url='https://chronomancy.app/lifetime?canceled=true',
+            metadata={
+                'telegram_id': str(user_info.get('telegram_id', '')),
+                'first_name': user_info.get('first_name', ''),
+                'last_name': user_info.get('last_name', ''),
+                'username': user_info.get('username', ''),
+                'product': 'lifetime_pass'
+            }
+        )
+        
+        return JSONResponse({"id": checkout_session.id})
+        
+    except Exception as e:
+        print(f"Error creating checkout session: {e}")
+        return JSONResponse({"error": str(e)}, status_code=400)
+
 @app.get("/theory")
 async def serve_theory():
     """Serve theory primer page"""
     return FileResponse(BASE_DIR / "theory.html")
 
+@app.get("/lifetime")
+async def serve_lifetime():
+    """Serve Lifetime PSI Pass page"""
+    return FileResponse(BASE_DIR / "lifetime.html")
+
 @app.on_event("startup")
 async def startup_event():
-    """Start background Telegram bot polling when API server starts"""
+    """Configure Telegram webhook on startup (Scott Wilber canonical setup)."""
+
+    print("🏵️ Chronomancy API starting up – configuring Telegram webhook…")
+
+    if not TOKEN:
+        print("⚠️  TELEGRAM_BOT_TOKEN missing – webhook not set")
+        return
+
+    # Use configured public domain (default api.chronomancy.app)
+    public_base = os.getenv("PUBLIC_BASE_URL", "https://api.chronomancy.app")
+    webhook_url = f"{public_base}/telegram/{TOKEN}"
+
     try:
-        import threading
-        from bot import main as bot_main
-        if not getattr(bot_main, "_api_thread_started", False):
-            t = threading.Thread(target=bot_main.main, daemon=True)
-            t.start()
-            bot_main._api_thread_started = True
-            print("🚀 Telegram bot polling thread started")
-    except Exception as e:
-        print(f"⚠️  Failed to start Telegram bot thread: {e}")
+        telegram_bot.remove_webhook()
+        telegram_bot.set_webhook(url=webhook_url, max_connections=40)
+        print(f"✅ Telegram webhook set → {webhook_url}")
+    except Exception as exc:
+        print(f"⚠️  Could not set Telegram webhook: {exc}")
+
+# ---------------------------------------------------------------------------
+# Telegram webhook endpoint
+# ---------------------------------------------------------------------------
+
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+if TOKEN:
+
+    @app.post(f"/telegram/{TOKEN}")
+    async def telegram_webhook(request: Request):
+        """Pass Telegram updates to the shared TeleBot instance.
+
+        As prescribed by Scott Wilber's single-source canon, keep handler logic
+        minimal: deserialize, hand off, return *ok*.
+        """
+        data = await request.body()
+        try:
+            print(f"📥 Received webhook data: {data.decode()[:500]}...")  # Log first 500 chars
+            update = types.Update.de_json(data.decode())
+            print(f"🔄 Processing update ID: {update.update_id}")
+            telegram_bot.process_new_updates([update])
+            print(f"✅ Successfully processed update ID: {update.update_id}")
+        except Exception as exc:
+            print(f"❌ Webhook error: {exc}")
+            print(f"❌ Error type: {type(exc).__name__}")
+            print(f"❌ Raw data: {data.decode()}")
+            raise HTTPException(status_code=400, detail=str(exc))
+        return "ok"
 
 if __name__ == "__main__":
     print("🏵️ Starting Chronomancy Updated UI Server...")
     print("🎨 Scott Wilber's minimal activation energy framework")
-    print("📍 Serving at http://localhost:5001")
+    print("📍 Serving at http://localhost:8000")
     
     # Run server
     uvicorn.run(
         app,
         host="0.0.0.0",
-        port=5001,
+        port=8000,
         log_level="info",
         access_log=True
     ) 

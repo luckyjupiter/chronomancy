@@ -34,6 +34,8 @@ from telebot.types import (
     CallbackQuery,
     ChatMemberUpdated,
     WebAppInfo,
+    ReplyKeyboardMarkup,
+    KeyboardButton,
 )
 import logging
 
@@ -41,7 +43,11 @@ import logging
 # Environment & Bot setup
 # ---------------------------------------------------------------------------
 
-load_dotenv()
+# Try to load .env from multiple possible locations
+load_dotenv()  # Current directory
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', 'updatedui', '.env'))  # updatedui directory
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))  # Project root
+
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TOKEN:
     raise RuntimeError("TELEGRAM_BOT_TOKEN missing from environment; create .env file")
@@ -51,6 +57,12 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Configurable URLs
+# ---------------------------------------------------------------------------
+
+WEBAPP_URL = os.getenv("WEBAPP_URL")  # e.g. "https://api.chronomancy.app/"
 
 # -------------------------------------
 # Persistence (SQLite)
@@ -318,13 +330,12 @@ def handle_start(m: Message):
     # Always greet user personally
     first_name = (m.from_user.first_name or "there") if m.from_user else "there"
 
-    # Mini-app button (always shown)
-    webapp_keyboard = InlineKeyboardMarkup()
-    webapp_button = InlineKeyboardButton(
-        "🌀 Open Chronomancy App",
-                        web_app=WebAppInfo(url="https://chronomancy.app/"),
-    )
-    webapp_keyboard.add(webapp_button)
+    # Mini-app button if URL configured
+    webapp_keyboard = None
+    if WEBAPP_URL:
+        webapp_keyboard = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text="🌀 Open Chronomancy App", web_app=WebAppInfo(url=WEBAPP_URL))]]
+        )
 
     if cfg.tz_offset is None:
         # No timezone yet – encourage user to open the Mini App which will auto-detect it
@@ -400,12 +411,11 @@ def cb_tz_select(call: CallbackQuery):
     bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=None)
     
     # Create Mini App button for new users
-    webapp_keyboard = InlineKeyboardMarkup()
-    webapp_button = InlineKeyboardButton(
-        "🌀 Open Chronomancy App", 
-        web_app=WebAppInfo(url="https://chronomancy.app/")
-    )
-    webapp_keyboard.add(webapp_button)
+    webapp_keyboard = None
+    if WEBAPP_URL:
+        webapp_keyboard = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text="🌀 Open Chronomancy App", web_app=WebAppInfo(url=WEBAPP_URL))]]
+        )
     
     bot.send_message(
         chat_id, 
@@ -874,12 +884,11 @@ def send_ping(chat_id: int, text: str, ping_type: str, user_id: Optional[int] = 
     """
     try:
         # Create Mini App button for quick access to anomaly reporting
-        webapp_keyboard = InlineKeyboardMarkup()
-        webapp_button = InlineKeyboardButton(
-            "📝 Report Anomaly", 
-            web_app=WebAppInfo(url="https://chronomancy.app/?mode=anomaly")
-        )
-        webapp_keyboard.add(webapp_button)
+        webapp_keyboard = None
+        if WEBAPP_URL:
+            webapp_keyboard = ReplyKeyboardMarkup(
+                keyboard=[[KeyboardButton(text="📝 Report Anomaly", web_app=WebAppInfo(url=f"{WEBAPP_URL}?mode=anomaly"))]]
+            )
         
         sent_msg = bot.send_message(chat_id, text, reply_markup=webapp_keyboard)
         
@@ -974,7 +983,21 @@ def handle_any_message(m: Message):
 # Main entry
 # ---------------------------------------------------------------------------
 
-def main():
+def run_polling():
+    """Start alarm/sync threads then enter long-polling loop.
+
+    Scott Wilber guidance: keep the public webhook and long-poll endpoints mutually
+    exclusive.  Therefore we explicitly *remove* any webhook before starting
+    `infinity_polling()` to avoid Telegram 409 errors when a previous webhook is
+    still set.
+    """
+
+    # Ensure this process owns the getUpdates queue
+    try:
+        bot.remove_webhook()
+    except Exception:
+        pass
+
     threading.Thread(target=alarm_loop, daemon=True).start()
     threading.Thread(target=sync_loop, daemon=True).start()
 
@@ -1156,11 +1179,8 @@ def show_donation_footer(chat_id: int):
         f"ton://transfer/{TON_WALLET}?amount=5000000000&text={chat_id}"
     )
 
-    kb = InlineKeyboardMarkup()
-    kb.row(
-        InlineKeyboardButton("💎 Support with TON", url=url),
-        InlineKeyboardButton("Skip", callback_data="skip_donate"),
-    )
+    kb = InlineKeyboardMarkup(row_width=2)
+    kb.row(InlineKeyboardButton("💎 Support with TON", url=url), InlineKeyboardButton("Skip", callback_data="skip_donate"))
 
     bot.send_message(
         chat_id,
@@ -1195,7 +1215,7 @@ def handle_support(m: Message):
 
     url = f"ton://transfer/{TON_WALLET}?amount=5000000000&text={chat_id}"
     kb = InlineKeyboardMarkup()
-    kb.row(InlineKeyboardButton("💎 Buy Lifetime PSI Pass", url=url))
+    kb.add(InlineKeyboardButton("💎 Buy Lifetime PSI Pass", url=url))
     bot.reply_to(
         m,
         "Lifetime PSI Pass — unlock unlimited premium entropy forever (one-time ≥5 TON, never pay again).",
@@ -1213,6 +1233,10 @@ def mark_backer(chat_id: int, nft_id: str):
             "UPDATE users SET is_backer=1, nft_id=? WHERE chat_id=?",
             (nft_id, chat_id),
         )
+
+# Backward-compat CLI entry-point
+def main():
+    run_polling()
 
 if __name__ == "__main__":
     main() 

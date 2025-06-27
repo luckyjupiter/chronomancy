@@ -1,0 +1,38 @@
+# Cloudflare Tunnel Configuration Template
+# Copy to %USERPROFILE%\.cloudflared\config.yml (Windows) or ~/.cloudflared/config.yml (Linux)
+
+# Replace with your actual tunnel name
+tunnel: chronomancy-backend
+
+# Replace with your actual credentials file path
+# Windows: C:\Users\[username]\.cloudflared\[tunnel-id].json
+# Linux: /home/[username]/.cloudflared/[tunnel-id].json
+credentials-file: C:\Users\[USERNAME]\.cloudflared\chronomancy-backend.json
+
+# Ingress rules - BOTH domains point to same local server
+ingress:
+  # Primary domain (immediate DNS propagation)
+  - hostname: api.chronomancy.app
+    service: http://localhost:8000
+    
+  # Secondary domain (may take 24-48h for DNS propagation)  
+  - hostname: chronomancy.app
+    service: http://localhost:8000
+    
+  # Catch-all rule (required - must be last)
+  - service: http_status:404
+
+# Optional: Additional configuration
+# metrics: 127.0.0.1:20242  # Metrics endpoint
+# loglevel: info            # Log level (debug, info, warn, error)
+
+# Setup Instructions:
+# 1. Install cloudflared: https://github.com/cloudflare/cloudflared/releases
+# 2. Login: cloudflared tunnel login
+# 3. Create tunnel: cloudflared tunnel create chronomancy-backend
+# 4. Setup DNS: 
+#    cloudflared tunnel route dns chronomancy-backend api.chronomancy.app
+#    cloudflared tunnel route dns chronomancy-backend chronomancy.app
+# 5. Copy this file to config location
+# 6. Update paths and domain names above
+# 7. Run: cloudflared tunnel --config config.yml run 

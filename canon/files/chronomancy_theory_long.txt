@@ -1,0 +1,60 @@
+
+Every day hides Easter eggs; you’ve just never looked at the right second.
+
+Have you ever thought about how much is hidden in plain sight around you? How sometimes you look up at just the right moment to see a certain number, a peculiar arrangement, or notice a strange coincidence? Why do certain times always seem meaningful, and why do events cluster in mysterious cycles? Welcome, traveler, to Chronomancy — the art of navigating the hidden landscapes of time.
+
+Our perception of the reality is limited.
+
+A long time ago, we noticed that we perceive only a small part of the world around us. It turned out that the framework of our perception is set by all sorts of routine patterns, cyclical actions, habits and patterns of our logic. Of course, our life is not completely predetermined and there are many randomness in it, but the influence of such randomness is methodologically limited. By chance, we can end up in different places, but as long as we remain in the power of patterns, there will always be places where we simply cannot end up. In Chaos Theory, this is called an Attractor. No matter how your day goes, all the options for how it can end lie within the attractor set, and what lies beyond it is a mystery.
+
+It's like a game with decisions that affect the ending: there can be many endings, but their number is finite and you choose only between them.
+
+At first we confirmed this theory in space, when visiting random points on the map, we discovered that even near home, in the neighborhood, you can find places that you have never noticed before, although you have lived here all your life. This happens because if you choose a place randomly, then its choice is no longer controlled by logic, habits and other patterns of behavior, you're not filtering the results. We saw that even the surroundings of our home may be bigger than it seems. But the Time hides even more secrets.
+
+Time is subject to patterns to the greatest extent, since all our habits are tied to it, routines, cyclicality, all these are categories of time and they cut off from our field of vision most of the events and things that we simply do not notice.
+
+Our days often unfold in similar patterns: waking at the same hour, commuting the same routes, and interacting with familiar faces. Without realizing it, we've constructed a Reality Tunnel — a personal chronology, filled with routines that determine what we experience and, crucially, what we overlook.
+
+What is hidden in plain sight?
+
+To answer that question, Chronomacy progect was created. But first, let's figure out how Time hides fragments of reality from us at the first place.
+
+Think of the Cocktail Party Effect—the curious phenomenon of Selective Hearing, when in a noisy environment, such as a crowded cocktail party, you can focus on certain speaker and stop hearing anyone else around, despite the presence of numerous other conversations and background noise. It works not only with hearing, but with your attention in general: when you are focused on something, you do not notice other things. But what is even more interesting, is that there are lot of things, you never notice even if not focused on something else, just because they're simply beyong the patters of your attention.
+This can be seen on example of "Frequency illusion" or Baader–Meinhof phenomenon, when you first notice something new to you, be it a new word or object, you start to see it everywhere, as if it suddenly filled the world around you, although in fact this something was always there, it was just that your brain ignored its presence.
+
+Just think how many things can be invisible to you, even in your own home, not to mention events, moments in time, that happen when you are not looking.
+
+Time, just like space, has unexplored pockets—intervals filled with events and connections we're usually blind to because we’re too busy following predictable loops of behavior. To discover these hidden moments, we must first become aware of our own temporal autopilot.
+
+So how can we see the invisible?
+
+Simply enough: at random moments, your phone sounds an alarm. Each signal is a reminder—a curious poke from the White Rabbit himself—to stop and truly observe the world around you. At this instant, you're not looking for what you expect; you're open to something new. Perhaps you’ll catch a glimpse of synchronicity, a moment where things line up too perfectly to ignore, or you'll suddenly see a hidden pattern in your daily interactions. Like magic, the mundane transforms into the extraordinary.
+
+ If what limits us is patterns, then we can overcome them with absolute randomness. That is, we need an unbiased random number generator that will choose a moment in time for you, without any preferences. This is exactly what the Chronomancy app does, it creates a random alarm that will tear you out of autopilot at a random moment and allow you to pay attention to your surroundings at an unusual time. Just hearing this alarm, you go beyond your usual behavior, gain awareness where you usually are on autopilot.
+
+What should a beginner Chronomancer do when he hears the call of randomness?
+
+- First of all, look around thoughtfully. Where are you, what surrounds you. Do not just mechanically register familiar things, but try to really pay attention to them, think about what these things are and why they are here. - Look around you for anything unusual or that you wouldn't notice unless you were looking for it. Don't expect it to be anything completely paranormal (although it's possible, the experiment is just beginning and we don't know what you might find), and don't be upset if what you see doesn't surprise you right away, you just need to look closer. Also, some things start to make sense not right away, but after many observations.
+- Describe your experiences in thematic groups or social media. It's much easier to notice patterns if you can compare your experiences with other people's. In the end, it may turn out that many people see the same things that seem normal at first glance, but raise questions when you realize that they are repeated in others. In the end, everything is interconnected, and understanding how exactly is almost a superpower.
+- Compare your experiences at different points in time. The more hidden patterns you discover, the better you will navigate the folds of time and see a more complete picture of the world. You can send messages to yourself in the future to conduct a kind of dialogue between different moments in time and better understand their relationship. This will help to correlate causes and effects. - Be creative in what you pay attention to, do not stop only at objects, notice the sounds you hear or come up with new challenges about what you can look for connections in. In the end, we do not know all the answers and the development of Chronomancy largely lies with the Chronomancer community. Maybe you will come up with the most effective method and teach everyone to navigate in time like no one before.
+
+
+Sync-events.
+
+Sometimes the app can have synchronous events that many probably won't even notice. The idea is that a random alarm time can be shared by a large group of people. This feature is intentionally implemented so that people can see what connects them at a particular moment through their observation posts. But there is a deeper theory behind this. It will appeal to Chaos Theory, so if you are not a fan of complex mathematical ideas, you can stop here and proceed to chronomancy, since ignorance of this chapter will not affect your experience in any way.
+
+If you are still interested, then the idea is as follows:
+
+As we have already said, behavior patterns limit our perception of reality as an ending in a game with decisions. In Chaos Theory, there is a term for such a phenomenon - Attractor. What it is is very clearly seen in this article https://en.wikipedia.org/wiki/Chaos_game , where the presence of a basic principle behind random actions reduces the space of all their possible results to one geometric figure. That is, even despite the fact that it is impossible to accurately predict where some action that seems random to you will lead you, knowing the structure of behavior patterns, you can accurately determine where it will not lead you. You can read more about attractors here: https://en.wikipedia.org/wiki/Attractor
+
+If we consider each methodological pattern in our life as an attractor of some abstract equation, we will see that we live in the field of action of many attractors, large and small. Small ones affect us individually, and large ones determine the behavior of entire communities, and there are probably even some that affect all people without exception, limiting the space of their perception of reality.
+
+Like all chaotic systems, our life is sensitive to deviations, and the slightest accident can turn everything upside down, this is called the butterfly effect, however, few people understand that the butterfly effect only changes the variables in the attractor equation, but not the equation itself. A flap of a butterfly's snout can cause a hurricane on the other side of the Earth, but somewhere else there will be no hurricane and their total number will remain the same. We don't know how a coin will land if we toss it, but we do know that if we toss it 100 times, each side will land about 50 times. And accordingly, when a million butterflies flap their wings all over the planet, the deviations they create do not add up, but cancel each other out, because for every butterfly there is another that flapped its wings out of phase, which is why their total effect tends to zero.
+
+Therefore, if you get out of the pattern by reacting to a random timer, you have broken your personal local pattern, but you are still under pressure from larger ones that will drive you back into the rut through the convergence effect, a good analogy for which is an experiment where several metronomes are placed on a moving substrate, oscillating differently, but after a while they all begin to oscillate in unison. The attractor field works similarly, through the environment bringing us to the usual rhythm of behavior.
+
+And there is only one way to break this convergence: by synchronizing many participants. They still create a random deviation in the pattern, but because they do it synchronously, the butterfly wingbeats add up, rather than cancel each other out. If you throw 100 coins, but 100 of them are guaranteed to land on the same side, you can no longer say that each side will land 50 times, or that one of them will land either 40 or 60 times, which is no longer predictable. Sync effects are designed to work in the same way, creating a collective randomness, they will open the door for you beyond the attractor field into a world beyond the looking glass, where no one has been before, and increasing your chances of noticing something truly incredible in such moments.
+
+
+
+

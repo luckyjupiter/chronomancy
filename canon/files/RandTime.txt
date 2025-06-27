@@ -1,0 +1,153 @@
+Create a С# and python code for function that takes a time frame (if not set it is by default between now and the end of the day), does the following:
+
+The function generates random time within the whole day not limited by time frame, using current date (without time) as a seed. The point is that the time should be random, but it should be the same for every call within the same day.
+
+If the resulting date is out of the time frame, or a function already generated a random time today (checked in a global variable),
+the simple random time is generated within the time frame and returned, otherwise the date-seed random time is returned.
+
+
+
+csharp
+
+
+using System;
+
+public static class RandomTimeGenerator
+{
+    // Tracks the last date for which we computed a seeded time
+    private static DateTime _lastDate = DateTime.MinValue.Date;
+    private static DateTime _seededTime;
+    private static bool _seededTimeUsed = false;
+    private static readonly object _lock = new object();
+
+    /// <summary>
+    /// Returns a random DateTime inside [start,end].  
+    /// If called for the first time today and the per-day seeded time falls within that window,
+    /// returns the seeded time (consistent across the day).  Otherwise returns a fresh random time.
+    /// </summary>
+    public static DateTime GetRandomTime(DateTime? start = null, DateTime? end = null)
+    {
+        lock (_lock)
+        {
+            var now = DateTime.Now;
+            var today = now.Date;
+
+            // 1) Reset at midnight (new day)
+            if (_lastDate != today)
+            {
+                _lastDate = today;
+                _seededTimeUsed = false;
+
+                // Generate the “seeded” time for today across the full 24h
+                int seed = today.Year * 10000 + today.Month * 100 + today.Day;
+                var rng = new Random(seed);
+                // total seconds in a day = 86400
+                double secs = rng.NextDouble() * 86400;
+                _seededTime = today.AddSeconds(secs);
+            }
+
+            // 2) Determine the requested window
+            DateTime windowStart = start ?? now;
+            DateTime windowEnd = end ?? today.AddDays(1);
+            if (windowEnd <= windowStart)
+                throw new ArgumentException("End time must be after start time.");
+
+            // 3) If first call and seededTime inside window, use it:
+            if (!_seededTimeUsed
+                && _seededTime >= windowStart
+                && _seededTime <= windowEnd)
+            {
+                _seededTimeUsed = true;
+                return _seededTime;
+            }
+
+            // 4) Otherwise, generate a fresh random time inside [windowStart, windowEnd]
+            var simpleRng = new Random();
+            var span = windowEnd - windowStart;
+            double randSecs = simpleRng.NextDouble() * span.TotalSeconds;
+            return windowStart.AddSeconds(randSecs);
+        }
+    }
+}
+
+
+
+
+
+Usage examples:
+
+// default: now→end of today
+var t1 = RandomTimeGenerator.GetRandomTime();
+// explicit window
+var t2 = RandomTimeGenerator.GetRandomTime(
+              DateTime.Today.AddHours(9),
+              DateTime.Today.AddHours(17));
+
+
+-----------------------
+python
+
+
+
+import datetime
+import random
+import threading
+
+# Module‐level state
+_last_date = None
+_seeded_time = None
+_seeded_used = False
+_lock = threading.Lock()
+
+def get_random_time(start: datetime.datetime = None,
+                    end: datetime.datetime = None) -> datetime.datetime:
+    """
+    Returns a random datetime in [start, end].
+    - On first call each day: if the per-day seeded time (across 00:00–24:00) lies in [start,end],
+      returns that (same on every run that day).
+    - Otherwise returns a fresh (unseeded) random time in [start,end].
+    If start/end are None, start defaults to now, end to today’s 24:00.
+    """
+    global _last_date, _seeded_time, _seeded_used
+
+    with _lock:
+        now = datetime.datetime.now()
+        today = now.date()
+
+        # Reset at midnight
+        if _last_date != today:
+            _last_date = today
+            _seeded_used = False
+
+            # Seed based on date YYYYMMDD
+            seed = today.year * 10000 + today.month * 100 + today.day
+            rng = random.Random(seed)
+            secs = rng.random() * 86400  # seconds in a day
+            _seeded_time = datetime.datetime.combine(today, datetime.time(0,0)) + datetime.timedelta(seconds=secs)
+
+        # Determine window
+        window_start = start or now
+        window_end = end or datetime.datetime.combine(today, datetime.time(0,0)) + datetime.timedelta(days=1)
+        if window_end <= window_start:
+            raise ValueError("end must be after start")
+
+        # First call & seeded within window?
+        if (not _seeded_used
+            and window_start <= _seeded_time <= window_end):
+            _seeded_used = True
+            return _seeded_time
+
+        # Otherwise simple random in window
+        span = (window_end - window_start).total_seconds()
+        rand_secs = random.random() * span
+        return window_start + datetime.timedelta(seconds=rand_secs)
+
+
+Usage examples:
+
+# default: now→end of today
+t1 = get_random_time()
+# explicit window
+t2 = get_random_time(
+    start=datetime.datetime.now().replace(hour=9, minute=0, second=0, microsecond=0),
+    end=datetime.datetime.now().replace(hour=17, minute=0, second=0, microsecond=0))
