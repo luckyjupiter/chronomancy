@@ -12,7 +12,7 @@ from pathlib import Path
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 import stripe
 from dotenv import load_dotenv
@@ -320,6 +320,413 @@ if TOKEN:
             print(f"❌ Raw data: {data.decode()}")
             raise HTTPException(status_code=400, detail=str(exc))
         return "ok"
+
+@app.get("/admin")
+async def admin_dashboard():
+    """Real-time admin dashboard for monitoring Chronomancy system"""
+    return HTMLResponse(content="""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chronomancy Admin Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .dashboard { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .header p { opacity: 0.9; font-size: 1.1em; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); }
+        .stat-card h3 { margin-bottom: 15px; color: #ffd700; }
+        .stat-value { font-size: 2em; font-weight: bold; margin-bottom: 5px; }
+        .stat-label { opacity: 0.8; font-size: 0.9em; }
+        .activity-log { background: rgba(0,0,0,0.2); border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        .log-item { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; }
+        .log-item:last-child { border-bottom: none; }
+        .controls { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; margin-top: 20px; }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s; }
+        .btn-primary { background: #4CAF50; color: white; }
+        .btn-secondary { background: #2196F3; color: white; }
+        .btn-danger { background: #f44336; color: white; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .status-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+        .status-online { background: #4CAF50; }
+        .status-offline { background: #f44336; }
+        .live-data { opacity: 0.7; font-style: italic; }
+        .table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .table th, .table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .table th { background: rgba(255,255,255,0.1); font-weight: bold; }
+        .refresh-time { text-align: center; margin-top: 20px; opacity: 0.7; }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>🌀 Chronomancy Admin Dashboard</h1>
+            <p>Real-time monitoring of the temporal scanning network</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>🤖 Bot Status</h3>
+                <div class="stat-value" id="bot-status">
+                    <span class="status-indicator status-online"></span>ONLINE
+                </div>
+                <div class="stat-label">Webhook processing active</div>
+            </div>
+
+            <div class="stat-card">
+                <h3>👥 Active Users</h3>
+                <div class="stat-value" id="active-users">Loading...</div>
+                <div class="stat-label">Users with timer settings</div>
+            </div>
+
+            <div class="stat-card">
+                <h3>📤 Pings Today</h3>
+                <div class="stat-value" id="pings-today">Loading...</div>
+                <div class="stat-label">Messages sent in last 24h</div>
+            </div>
+
+            <div class="stat-card">
+                <h3>🔍 Anomalies Logged</h3>
+                <div class="stat-value" id="anomalies-today">Loading...</div>
+                <div class="stat-label">Reports received today</div>
+            </div>
+
+            <div class="stat-card">
+                <h3>⏰ Next Ping</h3>
+                <div class="stat-value" id="next-ping">Loading...</div>
+                <div class="stat-label">Scheduled alarm time</div>
+            </div>
+
+            <div class="stat-card">
+                <h3>🌐 Server Health</h3>
+                <div class="stat-value" id="server-health">
+                    <span class="status-indicator status-online"></span>HEALTHY
+                </div>
+                <div class="stat-label">API endpoint status</div>
+            </div>
+        </div>
+
+        <div class="activity-log">
+            <h3>📊 Recent Activity</h3>
+            <div id="activity-list">Loading activity feed...</div>
+        </div>
+
+        <div class="activity-log">
+            <h3>⏱️ Upcoming Schedule</h3>
+            <div id="schedule-list">Loading schedule...</div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" onclick="sendTestPing()">🧪 Send Global Test Ping</button>
+            <button class="btn btn-secondary" onclick="refreshData()">🔄 Refresh Data</button>
+            <button class="btn btn-secondary" onclick="exportLogs()">📥 Export Logs</button>
+        </div>
+
+        <div class="refresh-time">
+            Last updated: <span id="last-refresh">Never</span> | Auto-refresh: <span id="countdown">30s</span>
+        </div>
+    </div>
+
+    <script>
+        let countdownTimer = 30;
+        let intervalId;
+
+        async function fetchStats() {
+            try {
+                const response = await fetch('/admin/stats');
+                const data = await response.json();
+                
+                document.getElementById('active-users').textContent = data.active_users;
+                document.getElementById('pings-today').textContent = data.pings_today;
+                document.getElementById('anomalies-today').textContent = data.anomalies_today;
+                document.getElementById('next-ping').textContent = data.next_ping || 'None scheduled';
+                
+                // Update activity log
+                const activityHtml = data.recent_activity.map(item => 
+                    `<div class="log-item">
+                        <span>${item.description}</span>
+                        <span class="live-data">${item.timestamp}</span>
+                    </div>`
+                ).join('');
+                document.getElementById('activity-list').innerHTML = activityHtml || '<div class="live-data">No recent activity</div>';
+                
+                // Update schedule
+                const scheduleHtml = data.upcoming_schedule.map(item => 
+                    `<div class="log-item">
+                        <span>User ${item.user_id}</span>
+                        <span class="live-data">${item.time} (${item.countdown})</span>
+                    </div>`
+                ).join('');
+                document.getElementById('schedule-list').innerHTML = scheduleHtml || '<div class="live-data">No upcoming pings</div>';
+                
+                document.getElementById('last-refresh').textContent = new Date().toLocaleTimeString();
+                
+            } catch (error) {
+                console.error('Failed to fetch stats:', error);
+                document.getElementById('server-health').innerHTML = '<span class="status-indicator status-offline"></span>ERROR';
+            }
+        }
+
+        async function sendTestPing() {
+            if (!confirm('Send a test ping to all active users?')) return;
+            
+            try {
+                const response = await fetch('/admin/test-ping', { method: 'POST' });
+                const result = await response.json();
+                alert(`Test ping sent to ${result.sent_count} users`);
+                fetchStats();
+            } catch (error) {
+                alert('Failed to send test ping: ' + error.message);
+            }
+        }
+
+        function refreshData() {
+            fetchStats();
+            countdownTimer = 30;
+        }
+
+        function exportLogs() {
+            window.open('/admin/export-logs');
+        }
+
+        function startCountdown() {
+            intervalId = setInterval(() => {
+                countdownTimer--;
+                document.getElementById('countdown').textContent = countdownTimer + 's';
+                
+                if (countdownTimer <= 0) {
+                    fetchStats();
+                    countdownTimer = 30;
+                }
+            }, 1000);
+        }
+
+        // Initialize
+        fetchStats();
+        startCountdown();
+    </script>
+</body>
+</html>
+    """)
+
+@app.get("/admin/stats")
+async def admin_stats():
+    """API endpoint for admin dashboard statistics"""
+    try:
+        # Import bot functions
+        import sys
+        sys.path.append('bot')
+        import main as bot_main
+        
+        conn = bot_main.CONN
+        
+        # Get active users count
+        cur = conn.execute("""
+            SELECT COUNT(*) FROM users 
+            WHERE window_start IS NOT NULL 
+            AND window_end IS NOT NULL 
+            AND daily_count > 0
+        """)
+        active_users = cur.fetchone()[0]
+        
+        # Get pings today
+        cur = conn.execute("""
+            SELECT COUNT(*) FROM pings 
+            WHERE DATE(sent_at_utc) = DATE('now')
+        """)
+        pings_today = cur.fetchone()[0]
+        
+        # Get anomalies today
+        cur = conn.execute("""
+            SELECT COUNT(*) FROM anomalies 
+            WHERE DATE(created_at) = DATE('now')
+        """)
+        anomalies_today = cur.fetchone()[0]
+        
+        # Get recent activity
+        cur = conn.execute("""
+            SELECT 'Ping sent to user ' || user_id as description, 
+                   datetime(sent_at_utc, 'localtime') as timestamp
+            FROM pings 
+            ORDER BY sent_at_utc DESC 
+            LIMIT 10
+        """)
+        recent_activity = [{"description": row[0], "timestamp": row[1]} for row in cur.fetchall()]
+        
+        # Get next scheduled ping
+        next_ping = "Loading..."
+        try:
+            import datetime as dt
+            now = dt.datetime.utcnow()
+            next_alarms = []
+            
+            for user_id, cfg in bot_main.USERS.items():
+                if cfg.todays_alarms:
+                    future_alarms = [alarm for alarm in cfg.todays_alarms if alarm > now]
+                    if future_alarms:
+                        next_alarms.extend([(alarm, user_id) for alarm in future_alarms])
+            
+            if next_alarms:
+                next_alarms.sort()
+                next_alarm_time, next_user = next_alarms[0]
+                time_diff = next_alarm_time - now
+                hours = int(time_diff.total_seconds() // 3600)
+                minutes = int((time_diff.total_seconds() % 3600) // 60)
+                next_ping = f"{next_alarm_time.strftime('%H:%M:%S')} (in {hours}h {minutes}m)"
+            else:
+                next_ping = "None scheduled"
+                
+        except Exception as e:
+            next_ping = f"Error: {str(e)}"
+        
+        # Get upcoming schedule
+        upcoming_schedule = []
+        try:
+            for user_id, cfg in bot_main.USERS.items():
+                if cfg.todays_alarms:
+                    future_alarms = [alarm for alarm in cfg.todays_alarms if alarm > now]
+                    if future_alarms:
+                        alarm_time = future_alarms[0]
+                        time_diff = alarm_time - now
+                        hours = int(time_diff.total_seconds() // 3600)
+                        minutes = int((time_diff.total_seconds() % 3600) // 60)
+                        upcoming_schedule.append({
+                            "user_id": user_id,
+                            "time": alarm_time.strftime('%H:%M:%S'),
+                            "countdown": f"in {hours}h {minutes}m"
+                        })
+            
+            upcoming_schedule.sort(key=lambda x: x["time"])
+            upcoming_schedule = upcoming_schedule[:10]  # Top 10
+            
+        except Exception as e:
+            upcoming_schedule = [{"user_id": "Error", "time": str(e), "countdown": ""}]
+        
+        return {
+            "active_users": active_users,
+            "pings_today": pings_today,
+            "anomalies_today": anomalies_today,
+            "next_ping": next_ping,
+            "recent_activity": recent_activity,
+            "upcoming_schedule": upcoming_schedule
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching admin stats: {e}")
+        return {
+            "active_users": "Error",
+            "pings_today": "Error", 
+            "anomalies_today": "Error",
+            "next_ping": "Error",
+            "recent_activity": [],
+            "upcoming_schedule": []
+        }
+
+@app.post("/admin/test-ping")
+async def admin_test_ping():
+    """Send test ping to all active users (admin only)"""
+    try:
+        # Import bot functions
+        import sys
+        sys.path.append('bot')
+        import main as bot_main
+        
+        conn = bot_main.CONN
+        
+        # Get all active users
+        cur = conn.execute("""
+            SELECT chat_id FROM users 
+            WHERE window_start IS NOT NULL 
+            AND window_end IS NOT NULL 
+            AND daily_count > 0
+        """)
+        active_users = [row[0] for row in cur.fetchall()]
+        
+        sent_count = 0
+        for user_id in active_users:
+            try:
+                test_msg = f"""🧪 <b>Admin Test Ping!</b>
+
+This is a global test from the admin dashboard.
+
+🎯 <b>Instructions:</b>
+1. Look around your current environment
+2. Notice anything unusual or anomalous  
+3. Reply to this message with your observations
+
+<b>Challenge:</b> {bot_main.get_challenge()}
+
+<i>This was a test - regular scheduled pings continue as normal.</i>"""
+                
+                bot_main.send_ping(user_id, test_msg, ping_type="admin_test", user_id=user_id)
+                sent_count += 1
+            except Exception as e:
+                logger.error(f"Failed to send admin test ping to {user_id}: {e}")
+        
+        return {"sent_count": sent_count, "total_users": len(active_users)}
+        
+    except Exception as e:
+        logger.error(f"Error sending admin test ping: {e}")
+        return {"error": str(e), "sent_count": 0}
+
+@app.get("/admin/export-logs")
+async def export_logs():
+    """Export system logs as CSV"""
+    try:
+        import sys
+        sys.path.append('bot')
+        import main as bot_main
+        import io
+        import csv
+        
+        conn = bot_main.CONN
+        
+        # Get comprehensive log data
+        cur = conn.execute("""
+            SELECT 
+                p.sent_at_utc,
+                p.chat_id,
+                p.user_id, 
+                p.ping_type,
+                CASE WHEN a.id IS NOT NULL THEN 'Yes' ELSE 'No' END as responded,
+                a.text as anomaly_text,
+                a.media_type
+            FROM pings p
+            LEFT JOIN anomalies a ON p.id = a.ping_id
+            ORDER BY p.sent_at_utc DESC
+            LIMIT 1000
+        """)
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Timestamp', 'Chat ID', 'User ID', 'Ping Type', 'Responded', 'Anomaly Text', 'Media Type'])
+        
+        for row in cur.fetchall():
+            writer.writerow(row)
+        
+        content = output.getvalue()
+        output.close()
+        
+        return Response(
+            content=content,
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=chronomancy_logs.csv"}
+        )
+        
+    except Exception as e:
+        logger.error(f"Error exporting logs: {e}")
+        return {"error": str(e)}
 
 if __name__ == "__main__":
     print("🏵️ Starting Chronomancy Updated UI Server...")

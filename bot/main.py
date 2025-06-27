@@ -43,6 +43,9 @@ import logging
 # Environment & Bot setup
 # ---------------------------------------------------------------------------
 
+# Admin configuration
+ADMIN_USER_IDS = {1880904790}  # @JoshuaLengfelder
+
 # Try to load .env from multiple possible locations
 load_dotenv()  # Current directory
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', 'updatedui', '.env'))  # updatedui directory
@@ -334,7 +337,7 @@ def handle_start(m: Message):
     webapp_keyboard = None
     if WEBAPP_URL:
         webapp_keyboard = ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton(text="🌀 Open Chronomancy App", web_app=WebAppInfo(url=WEBAPP_URL))]]
+            [[KeyboardButton(text="🌀 Open Chronomancy App", web_app=WebAppInfo(url=WEBAPP_URL))]]
         )
 
     if cfg.tz_offset is None:
@@ -418,7 +421,7 @@ def cb_tz_select(call: CallbackQuery):
     webapp_keyboard = None
     if WEBAPP_URL:
         webapp_keyboard = ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton(text="🌀 Open Chronomancy App", web_app=WebAppInfo(url=WEBAPP_URL))]]
+            [[KeyboardButton(text="🌀 Open Chronomancy App", web_app=WebAppInfo(url=WEBAPP_URL))]]
         )
     
     bot.send_message(
@@ -535,8 +538,12 @@ def handle_poke(m: Message):
 
 @bot.message_handler(commands=["testall"])
 def handle_test_all(m: Message):
-    """Send a test ping to all users with active timers (admin/testing only)."""
-    # Only allow in private chats for now (can be restricted to specific user IDs later)
+    """Send a test ping to all users with active timers (admin only)."""
+    # Check if user is admin
+    if m.from_user.id not in ADMIN_USER_IDS:
+        bot.reply_to(m, "❌ This command is restricted to administrators.")
+        return
+    
     if m.chat.type != "private":
         bot.reply_to(m, "This command only works in private messages.")
         return
@@ -580,7 +587,12 @@ This is a global test to verify the Chronomancy system is working.
 
 @bot.message_handler(commands=["schedule"])
 def handle_schedule(m: Message):
-    """Show upcoming ping schedule for all active users (admin/testing only)."""
+    """Show upcoming ping schedule for all active users (admin only)."""
+    # Check if user is admin
+    if m.from_user.id not in ADMIN_USER_IDS:
+        bot.reply_to(m, "❌ This command is restricted to administrators.")
+        return
+        
     if m.chat.type != "private":
         bot.reply_to(m, "This command only works in private messages.")
         return
@@ -977,7 +989,7 @@ def send_ping(chat_id: int, text: str, ping_type: str, user_id: Optional[int] = 
         webapp_keyboard = None
         if WEBAPP_URL:
             webapp_keyboard = ReplyKeyboardMarkup(
-                keyboard=[[KeyboardButton(text="📝 Report Anomaly", web_app=WebAppInfo(url=f"{WEBAPP_URL}?mode=anomaly"))]]
+                [[KeyboardButton(text="📝 Report Anomaly", web_app=WebAppInfo(url=f"{WEBAPP_URL}?mode=anomaly"))]]
             )
         
         sent_msg = bot.send_message(chat_id, text, reply_markup=webapp_keyboard)
