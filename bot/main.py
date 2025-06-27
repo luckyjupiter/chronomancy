@@ -370,6 +370,10 @@ def handle_start(m: Message):
 /export - Export your data (CSV)
 /global - View network statistics
 
+<b>Admin/Testing Commands:</b>
+/testall - Send test ping to all active users
+/schedule - View upcoming ping schedule
+
 Reply to any ping message to log anomalies!""",
             reply_markup=webapp_keyboard,
         )
@@ -528,6 +532,92 @@ def handle_future(m: Message):
 def handle_poke(m: Message):
     cfg = USERS.setdefault(m.chat.id, UserConfig(chat_id=m.chat.id))
     deliver_alarm(cfg)
+
+@bot.message_handler(commands=["testall"])
+def handle_test_all(m: Message):
+    """Send a test ping to all users with active timers (admin/testing only)."""
+    # Only allow in private chats for now (can be restricted to specific user IDs later)
+    if m.chat.type != "private":
+        bot.reply_to(m, "This command only works in private messages.")
+        return
+    
+    # Get all users with active timer settings
+    cur = CONN.execute("""
+        SELECT chat_id FROM users 
+        WHERE window_start IS NOT NULL 
+        AND window_end IS NOT NULL 
+        AND daily_count > 0
+    """)
+    active_users = [row[0] for row in cur.fetchall()]
+    
+    if not active_users:
+        bot.reply_to(m, "No users with active timers found.")
+        return
+    
+    # Send test ping to all active users
+    sent_count = 0
+    for user_id in active_users:
+        try:
+            test_msg = f"""🧪 <b>Test Ping!</b>
+
+This is a global test to verify the Chronomancy system is working.
+
+🎯 <b>Instructions:</b>
+1. Look around your current environment
+2. Notice anything unusual or anomalous  
+3. Reply to this message with your observations
+
+<b>Challenge:</b> {get_challenge()}
+
+<i>This was a test - regular scheduled pings will continue as normal.</i>"""
+            
+            send_ping(user_id, test_msg, ping_type="test_global", user_id=user_id)
+            sent_count += 1
+        except Exception as e:
+            logger.error(f"Failed to send test ping to user {user_id}: {e}")
+    
+    bot.reply_to(m, f"✅ Global test ping sent to {sent_count} users with active timers.")
+
+@bot.message_handler(commands=["schedule"])
+def handle_schedule(m: Message):
+    """Show upcoming ping schedule for all active users (admin/testing only)."""
+    if m.chat.type != "private":
+        bot.reply_to(m, "This command only works in private messages.")
+        return
+    
+    lines = ["<b>📅 Upcoming Ping Schedule</b>\n"]
+    
+    now = dt.datetime.utcnow()
+    user_schedules = []
+    
+    for user_id, cfg in USERS.items():
+        if cfg.todays_alarms:
+            # Get next alarm for this user
+            next_alarms = [alarm for alarm in cfg.todays_alarms if alarm > now]
+            if next_alarms:
+                next_alarm = next_alarms[0]
+                user_schedules.append((next_alarm, user_id, len(next_alarms)))
+    
+    if not user_schedules:
+        bot.reply_to(m, "No upcoming pings scheduled. Users may need to set their timers or wait for next day's schedule.")
+        return
+    
+    # Sort by next alarm time
+    user_schedules.sort(key=lambda x: x[0])
+    
+    lines.append(f"Current time: {now.strftime('%Y-%m-%d %H:%M:%S')} UTC\n")
+    
+    for alarm_time, user_id, remaining_count in user_schedules[:10]:  # Show next 10
+        time_diff = alarm_time - now
+        hours = int(time_diff.total_seconds() // 3600)
+        minutes = int((time_diff.total_seconds() % 3600) // 60)
+        
+        lines.append(f"User {user_id}: <code>{alarm_time.strftime('%H:%M:%S')}</code> (in {hours}h {minutes}m, {remaining_count} left today)")
+    
+    if len(user_schedules) > 10:
+        lines.append(f"\n... and {len(user_schedules) - 10} more")
+    
+    bot.reply_to(m, "\n".join(lines))
 
 @bot.message_handler(commands=["profile"])
 def handle_profile(m: Message):
