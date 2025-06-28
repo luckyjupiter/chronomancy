@@ -320,6 +320,8 @@ def deliver_alarm(cfg: UserConfig):
     # Always include a challenge prompt per canon
     msg_lines.append(f"🧩 <b>Challenge:</b> {get_challenge()}")
     send_ping(cfg.chat_id, "\n".join(msg_lines), ping_type="user", user_id=cfg.chat_id)
+    # Log
+    send_log(f"Ping sent → chat_id={cfg.chat_id}  utc={dt.datetime.utcnow().isoformat(timespec='seconds')}")
 
 # ---------------------------------------------------------------------------
 # Command Handlers
@@ -1423,3 +1425,44 @@ def send_admin_alert(text: str) -> None:
             bot.send_message(admin_id, f"🚨 {text}")
         except Exception as e:
             logger.error(f"Failed to send admin alert to {admin_id}: {e}") 
+
+# ---------------------------------------------------------------------------
+# Logging channel helpers (group chat for run-time events)
+# ---------------------------------------------------------------------------
+
+def get_log_chat_id() -> Optional[int]:
+    val = get_config("log_chat_id")
+    return int(val) if val and val.isdigit() else None
+
+
+def set_log_chat_id(chat_id: int):
+    set_config("log_chat_id", str(chat_id))
+
+
+def send_log(message: str):
+    """Send a log line to the configured Telegram group (if any)."""
+    log_chat = get_log_chat_id()
+    if not log_chat:
+        return
+    try:
+        bot.send_message(log_chat, message)
+    except Exception as e:
+        logger.error(f"Failed to send log message: {e}") 
+
+# ---------------------------------------------------------------------------
+# Admin command to set logging channel
+# ---------------------------------------------------------------------------
+
+@bot.message_handler(commands=["setlogs"])
+def handle_set_logs(m: Message):
+    """Run /setlogs inside the target group (or in PM by replying to forwarded msg)."""
+    # Allow only admins defined in ADMIN_USER_IDS
+    if m.from_user and m.from_user.id not in ADMIN_USER_IDS:
+        return
+
+    if m.chat.type not in ["group", "supergroup"]:
+        bot.reply_to(m, "❌ Run /setlogs inside the group you want to receive logs.")
+        return
+
+    set_log_chat_id(m.chat.id)
+    bot.reply_to(m, "✅ This group is now set as the Chronomancy log channel.") 
