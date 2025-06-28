@@ -4,4 +4,6 @@ fastapi==0.104.1
 pydantic==2.5.2
 uvicorn[standard]==0.24.0
 zstandard==0.22.0
-numpy==1.26.4 
+numpy==1.26.4
+psutil==5.9.8
+stripe==8.7.0 
