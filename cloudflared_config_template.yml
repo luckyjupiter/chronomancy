@@ -19,6 +19,20 @@ ingress:
   - hostname: chronomancy.app
     service: http://localhost:8000
     
+  # ---- Additional services (examples) ----
+  # Example 1: Internal admin dashboard on :9000, served at admin.chronomancy.app
+  - hostname: admin.chronomancy.app
+    service: http://localhost:9000
+
+  # Example 2: Path-based routing to FastAPI docs (same 8000 port)
+  - hostname: api.chronomancy.app
+    path: /docs
+    service: http://localhost:8000
+
+  # Example 3: WebSocket service on port 8765
+  - hostname: ws.chronomancy.app
+    service: ws://localhost:8765
+    
   # Catch-all rule (required - must be last)
   - service: http_status:404
 

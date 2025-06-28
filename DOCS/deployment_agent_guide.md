@@ -73,6 +73,13 @@ credentials-file: /home/chronomancy/.cloudflared/chronomancy.json
 ingress:
   - hostname: api.chronomancy.app
     service: http://localhost:8000
+  - hostname: admin.chronomancy.app
+    service: http://localhost:9000
+  - hostname: ws.chronomancy.app
+    service: ws://localhost:8765
+  - hostname: api.chronomancy.app
+    path: /docs
+    service: http://localhost:8000
   - service: http_status:404
 no-chunked-encoding: true
 ```
@@ -84,6 +91,26 @@ Check:
 ```
 cloudflared tunnel info ${CLOUDFLARE_TUNNEL_ID}
 # should show 4 connections
+```
+
+### 4.1 Adding additional services on the same tunnel
+Need a new sub-service? Just extend `ingress` and restart cloudflared:
+```yaml
+ingress:
+  - hostname: api.chronomancy.app
+    service: http://localhost:8000  # main API
+  - hostname: admin.chronomancy.app
+    service: http://localhost:9000  # admin UI
+  - hostname: ws.chronomancy.app
+    service: ws://localhost:8765    # WebSocket stream
+  - hostname: api.chronomancy.app
+    path: /docs
+    service: http://localhost:8000  # path-based route
+  - service: http_status:404
+```
+Reload:
+```bash
+sudo systemctl restart cloudflared
 ```
 
 ---
