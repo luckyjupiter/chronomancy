@@ -1455,14 +1455,35 @@ def send_log(message: str):
 
 @bot.message_handler(commands=["setlogs"])
 def handle_set_logs(m: Message):
-    """Run /setlogs inside the target group (or in PM by replying to forwarded msg)."""
-    # Allow only admins defined in ADMIN_USER_IDS
-    if m.from_user and m.from_user.id not in ADMIN_USER_IDS:
+    """Register current group as the destination for runtime logs.
+
+    Acceptance rules:
+      • Caller is in ADMIN_USER_IDS _or_ has admin rights in the group.
+      • Command must be issued **inside** the target group.
+    """
+
+    # Must be run inside a group
+    if m.chat.type not in ["group", "supergroup"]:
+        bot.reply_to(m, "❌ Run /setlogs inside *the* group that should receive logs.")
         return
 
-    if m.chat.type not in ["group", "supergroup"]:
-        bot.reply_to(m, "❌ Run /setlogs inside the group you want to receive logs.")
+    caller_id = m.from_user.id if m.from_user else None
+
+    # Check hard-coded admins first
+    is_admin = caller_id in ADMIN_USER_IDS
+
+    # If not hard-coded admin, check group admin rights
+    if not is_admin:
+        try:
+            member = bot.get_chat_member(m.chat.id, caller_id)
+            is_admin = member.status in ("administrator", "creator")
+        except Exception as e:
+            logger.warning(f"Failed to fetch member status: {e}")
+
+    if not is_admin:
+        bot.reply_to(m, "⛔️ Only bot admins or group admins can run /setlogs.")
         return
 
     set_log_chat_id(m.chat.id)
-    bot.reply_to(m, "✅ This group is now set as the Chronomancy log channel.") 
+    bot.reply_to(m, "✅ This group is now set as the Chronomancy log channel.")
+    send_log("Chronomancy logging channel activated here.") 
