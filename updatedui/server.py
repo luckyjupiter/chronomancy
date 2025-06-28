@@ -18,6 +18,19 @@ import stripe
 from dotenv import load_dotenv
 import sqlite3
 from telebot import types
+import asyncio
+import time
+import logging
+from typing import Optional, Dict, Any
+from contextlib import asynccontextmanager
+from collections import deque
+import psutil
+import threading
+from bot.main import send_admin_alert
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -34,6 +47,117 @@ if stripe_key:
 else:
     print("⚠️  Warning: STRIPE_API_KEY not found in environment variables")
     print("📝 Create a .env file in this directory with: STRIPE_API_KEY=sk_test_your_secret_key")
+
+# Circuit Breaker for Telegram API
+class TelegramCircuitBreaker:
+    def __init__(self, failure_threshold: int = 5, timeout: int = 60):
+        self.failure_count = 0
+        self.failure_threshold = failure_threshold
+        self.timeout = timeout
+        self.last_failure: Optional[float] = None
+        self.state = "closed"  # closed, open, half-open
+        self.lock = asyncio.Lock()
+
+    async def call(self, func, *args, **kwargs):
+        async with self.lock:
+            if self.state == "open":
+                if self.last_failure and time.time() - self.last_failure > self.timeout:
+                    self.state = "half-open"
+                    logger.info("Circuit breaker moved to half-open state")
+                else:
+                    raise Exception("Circuit breaker is open - Telegram API unavailable")
+
+            try:
+                result = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: func(*args, **kwargs)
+                )
+                if self.state == "half-open":
+                    self.state = "closed"
+                    self.failure_count = 0
+                    logger.info("Circuit breaker closed - Telegram API restored")
+                return result
+            except Exception as e:
+                self.failure_count += 1
+                logger.error(f"Telegram API call failed: {e}")
+                if self.failure_count >= self.failure_threshold:
+                    self.state = "open"
+                    self.last_failure = time.time()
+                    logger.error("Circuit breaker opened - Telegram API calls suspended")
+                raise
+
+# Global circuit breaker instance
+telegram_circuit_breaker = TelegramCircuitBreaker()
+
+# ---------------------------------------------------------------------------
+# Alert manager – throttles admin notifications
+# ---------------------------------------------------------------------------
+
+class AlertManager:
+    """Simple per-key cooldown alert dispatcher to Telegram admins."""
+
+    def __init__(self, cooldown_seconds: int = 300):
+        self.cooldown_seconds = cooldown_seconds
+        self._last_alert_ts: Dict[str, float] = {}
+
+    async def maybe_alert(self, key: str, message: str):
+        now = time.time()
+        last = self._last_alert_ts.get(key, 0)
+        if now - last < self.cooldown_seconds:
+            return  # still cooling down
+        try:
+            await asyncio.get_event_loop().run_in_executor(None, send_admin_alert, message)
+            self._last_alert_ts[key] = now
+            logger.warning(f"Admin alert sent [{key}]: {message}")
+        except Exception as e:
+            logger.error(f"Failed to send admin alert '{key}': {e}")
+
+alert_manager = AlertManager()
+
+# Database connection pool manager
+class DatabaseConnectionPool:
+    def __init__(self, db_path: str, max_connections: int = 20):
+        self.db_path = db_path
+        self.max_connections = max_connections
+        self.pool = deque()
+        self.active_connections = 0
+        self.lock = threading.Lock()
+        
+    def get_connection(self):
+        with self.lock:
+            if self.pool:
+                return self.pool.popleft()
+            elif self.active_connections < self.max_connections:
+                conn = sqlite3.connect(self.db_path, check_same_thread=False)
+                conn.row_factory = sqlite3.Row
+                self.active_connections += 1
+                return conn
+            else:
+                raise Exception("Database connection pool exhausted")
+    
+    def return_connection(self, conn):
+        with self.lock:
+            if len(self.pool) < self.max_connections // 2:
+                self.pool.append(conn)
+            else:
+                conn.close()
+                self.active_connections -= 1
+
+    @asynccontextmanager
+    async def get_async_connection(self):
+        conn = None
+        try:
+            conn = await asyncio.get_event_loop().run_in_executor(
+                None, self.get_connection
+            )
+            yield conn
+        finally:
+            if conn:
+                await asyncio.get_event_loop().run_in_executor(
+                    None, self.return_connection, conn
+                )
+
+# Initialize connection pool
+db_pool = DatabaseConnectionPool(os.path.join(ROOT_DIR, "bot", "chronomancy.db"))
 
 # Import backend functionality
 bot_functions_available = False
@@ -82,6 +206,48 @@ except ImportError as e:
 
     telegram_bot = _DummyBot()
 
+# System health monitoring
+class HealthMonitor:
+    def __init__(self):
+        self.start_time = time.time()
+        
+    async def check_database_health(self) -> Dict[str, Any]:
+        try:
+            async with db_pool.get_async_connection() as conn:
+                await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: conn.execute("SELECT 1").fetchone()
+                )
+            return {"status": "ok", "message": "Database accessible"}
+        except Exception as e:
+            return {"status": "error", "message": f"Database error: {str(e)}"}
+    
+    async def check_telegram_api(self) -> Dict[str, Any]:
+        try:
+            if telegram_circuit_breaker.state == "open":
+                return {"status": "degraded", "message": "Circuit breaker open"}
+            else:
+                return {"status": "ok", "message": "Telegram API available"}
+        except Exception as e:
+            return {"status": "error", "message": f"Telegram API error: {str(e)}"}
+    
+    def get_memory_stats(self) -> Dict[str, Any]:
+        try:
+            process = psutil.Process()
+            memory_info = process.memory_info()
+            return {
+                "status": "ok" if memory_info.rss < 1024*1024*1024 else "warning",  # 1GB threshold
+                "rss_mb": memory_info.rss / 1024 / 1024,
+                "vms_mb": memory_info.vms / 1024 / 1024,
+                "percent": process.memory_percent()
+            }
+        except Exception as e:
+            return {"status": "error", "message": f"Memory check error: {str(e)}"}
+    
+    def get_uptime_seconds(self) -> float:
+        return time.time() - self.start_time
+
+health_monitor = HealthMonitor()
+
 # Initialize FastAPI app
 app = FastAPI(title="Chronomancy Updated UI", version="1.0.0")
 
@@ -106,6 +272,37 @@ async def serve_frontend():
     """Serve the new minimal Chronomancy UI"""
     return FileResponse(BASE_DIR / "index.html")
 
+@app.get("/health")
+async def health_check():
+    """Basic health check endpoint"""
+    return JSONResponse({"status": "healthy", "message": "Chronomancy Updated UI Server"})
+
+@app.get("/health/detailed")
+async def detailed_health():
+    """Comprehensive health check with all system components"""
+    health_status = {
+        "database": await health_monitor.check_database_health(),
+        "telegram_api": await health_monitor.check_telegram_api(),
+        "memory_usage": health_monitor.get_memory_stats(),
+        "uptime_seconds": health_monitor.get_uptime_seconds(),
+        "circuit_breaker_state": telegram_circuit_breaker.state,
+        "active_db_connections": db_pool.active_connections
+    }
+    
+    overall_status = "healthy"
+    for component, status in health_status.items():
+        if isinstance(status, dict) and status.get("status") == "error":
+            overall_status = "unhealthy"
+            break
+        elif isinstance(status, dict) and status.get("status") == "warning":
+            overall_status = "degraded"
+    
+    return JSONResponse({
+        "status": overall_status,
+        "timestamp": time.time(),
+        "checks": health_status
+    })
+
 @app.get("/api/user/{user_id}/status")
 async def get_user_status(user_id: int):
     """Get current timer status for user"""
@@ -122,7 +319,7 @@ async def get_user_status(user_id: int):
             "is_backer": settings.get("is_backer", False)
         })
     except Exception as e:
-        print(f"Error getting user status: {e}")
+        logger.error(f"Error getting user status: {e}")
         # Return default status
         return JSONResponse({
             "timer_active": False,
@@ -147,19 +344,18 @@ async def update_user_timer(user_id: int, timer_data: dict):
         )
         
         if success:
-            # Attempt to send confirmation via Telegram bot
+            # Attempt to send confirmation via Telegram bot with circuit breaker
             confirmation_sent = False
             try:
-                print(f"📱 Attempting to send confirmation to user {user_id}")
-                telegram_bot.send_message(
+                await telegram_circuit_breaker.call(
+                    telegram_bot.send_message,
                     user_id,
-                    f"✅ Scanner activated! I will ping you {timer_data['daily_count']} time(s) per day between {timer_data['window_start']} and {timer_data['window_end']}.")
+                    f"✅ Scanner activated! I will ping you {timer_data['daily_count']} time(s) per day between {timer_data['window_start']} and {timer_data['window_end']}."
+                )
                 confirmation_sent = True
-                print(f"✅ Confirmation message sent successfully to user {user_id}")
+                logger.info(f"✅ Confirmation message sent successfully to user {user_id}")
             except Exception as e:
-                print(f"⚠️  Could not send confirmation message to user {user_id}: {e}")
-                print(f"⚠️  Exception type: {type(e).__name__}")
-                print(f"⚠️  This likely means the user hasn't started the bot yet")
+                logger.warning(f"⚠️  Could not send confirmation message to user {user_id}: {e}")
                 confirmation_sent = False
 
             return JSONResponse({
@@ -171,7 +367,7 @@ async def update_user_timer(user_id: int, timer_data: dict):
             raise HTTPException(status_code=500, detail="Failed to update timer")
             
     except Exception as e:
-        print(f"Error updating timer: {e}")
+        logger.error(f"Error updating timer: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/user/{user_id}/mute")
@@ -187,7 +383,7 @@ async def mute_timer(user_id: int, mute_data: dict):
             raise HTTPException(status_code=500, detail="Failed to mute timer")
             
     except Exception as e:
-        print(f"Error muting timer: {e}")
+        logger.error(f"Error muting timer: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/user/{user_id}/anomaly")
@@ -205,7 +401,7 @@ async def submit_anomaly(user_id: int, anomaly_data: dict):
             raise HTTPException(status_code=500, detail="Failed to record anomaly")
             
     except Exception as e:
-        print(f"Error recording anomaly: {e}")
+        logger.error(f"Error recording anomaly: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/challenge")
@@ -215,13 +411,8 @@ async def get_scanning_challenge():
         challenge = get_challenge()
         return JSONResponse({"challenge": challenge})
     except Exception as e:
-        print(f"Error getting challenge: {e}")
+        logger.error(f"Error getting challenge: {e}")
         return JSONResponse({"challenge": "Scan your surroundings for anything unusual, unexpected, or meaningful..."})
-
-@app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    return JSONResponse({"status": "healthy", "message": "Chronomancy Updated UI Server"})
 
 @app.post("/api/create-checkout-session")
 async def create_checkout_session(request_data: dict):
@@ -258,7 +449,7 @@ async def create_checkout_session(request_data: dict):
         return JSONResponse({"id": checkout_session.id})
         
     except Exception as e:
-        print(f"Error creating checkout session: {e}")
+        logger.error(f"Error creating checkout session: {e}")
         return JSONResponse({"error": str(e)}, status_code=400)
 
 @app.get("/theory")
@@ -273,7 +464,7 @@ async def serve_lifetime():
 
 @app.on_event("startup")
 async def startup_event():
-    """Configure Telegram webhook on startup (Scott Wilber canonical setup)."""
+    """Initialize webhook and start background tasks"""
 
     print("🏵️ Chronomancy API starting up – configuring Telegram webhook…")
 
@@ -291,6 +482,31 @@ async def startup_event():
         print(f"✅ Telegram webhook set → {webhook_url}")
     except Exception as exc:
         print(f"⚠️  Could not set Telegram webhook: {exc}")
+
+    # Start metrics watchdog
+    async def metrics_watchdog():
+        while True:
+            try:
+                # Memory usage
+                mem = psutil.virtual_memory()
+                if mem.percent > 85:
+                    await alert_manager.maybe_alert("mem_high", f"Memory usage is {mem.percent}%")
+
+                # DB pool saturation
+                if db_pool.active_connections >= int(0.8 * db_pool.max_connections):
+                    await alert_manager.maybe_alert(
+                        "db_pool_high",
+                        f"DB pool high usage: {db_pool.active_connections}/{db_pool.max_connections}",
+                    )
+
+                # Telegram API circuit breaker open
+                if telegram_circuit_breaker.state == "open":
+                    await alert_manager.maybe_alert("tg_circuit_open", "Telegram circuit breaker OPEN – messages blocked")
+            except Exception as e:
+                logger.error(f"Metrics watchdog error: {e}")
+            await asyncio.sleep(30)
+
+    asyncio.create_task(metrics_watchdog())
 
 # ---------------------------------------------------------------------------
 # Telegram webhook endpoint

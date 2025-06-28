@@ -88,7 +88,8 @@ def init_db():
                 muted_until TEXT DEFAULT NULL,
                 is_backer INTEGER NOT NULL DEFAULT 0,
                 donate_skip INTEGER NOT NULL DEFAULT 0,
-                nft_id TEXT DEFAULT NULL
+                nft_id TEXT DEFAULT NULL,
+                is_group INTEGER DEFAULT 0
             )"""
     )
     # Ensure tz_offset exists even on older DBs
@@ -173,6 +174,15 @@ def init_db():
     except sqlite3.OperationalError:
         pass
 
+    # Add is_group column for distinguishing group chats
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN is_group INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+
+    # Ensure NULLs -> 0 (older rows)
+    cur.execute("UPDATE users SET is_group = 0 WHERE is_group IS NULL")
+
     con.commit()
     return con
 
@@ -243,13 +253,14 @@ class UserConfig:
         # persist settings
         with CONN:
             CONN.execute(
-                "INSERT OR REPLACE INTO users(chat_id, window_start, window_end, daily_count, tz_offset) VALUES (?,?,?,?,?)",
+                "INSERT OR REPLACE INTO users(chat_id, window_start, window_end, daily_count, tz_offset, is_group) VALUES (?,?,?,?,?,?)",
                 (
                     self.chat_id,
                     self.window_start.strftime("%H:%M") if self.window_start else None,
                     self.window_end.strftime("%H:%M") if self.window_end else None,
                     self.daily_count,
                     self.tz_offset,
+                    0,
                 ),
             )
 
@@ -1167,7 +1178,7 @@ def get_user_timer_settings(user_id: int) -> dict:
         logger.error(f"Error getting user timer settings: {e}")
         return {"active": False, "window_start": None, "window_end": None, "daily_count": 0, "tz_offset": None, "is_muted": False, "muted_until": None, "is_backer": False, "donate_skip": 0}
 
-def set_user_timer(user_id: int, window_start: str, window_end: str, daily_count: int, tz_offset: int = 0) -> bool:
+def set_user_timer(user_id: int, window_start: str, window_end: str, daily_count: int, tz_offset: int = 0, *, is_group: int = 0) -> bool:
     """Set timer settings for a user (for Mini App API)"""
     try:
         # Validate times
@@ -1177,8 +1188,8 @@ def set_user_timer(user_id: int, window_start: str, window_end: str, daily_count
         # Update database
         with CONN:
             CONN.execute(
-                "INSERT OR REPLACE INTO users(chat_id, window_start, window_end, daily_count, tz_offset) VALUES (?,?,?,?,?)",
-                (user_id, window_start, window_end, daily_count, tz_offset)
+                "INSERT OR REPLACE INTO users(chat_id, window_start, window_end, daily_count, tz_offset, is_group) VALUES (?,?,?,?,?,?)",
+                (user_id, window_start, window_end, daily_count, tz_offset, is_group)
             )
         
         # Update in-memory config if user exists
@@ -1341,4 +1352,74 @@ def main():
     run_polling()
 
 if __name__ == "__main__":
-    main() 
+    main()
+
+# -------------------------
+# Group Ping Controls
+# -------------------------
+
+@bot.message_handler(commands=["groupwindow", "gwindow"], chat_types=["group", "supergroup"])
+def handle_group_window(m: Message):
+    """Set random ping window for a group chat.
+
+    Usage (in group):
+        /groupwindow 08:00 23:00 5
+    """
+    parts = m.text.split()
+    if len(parts) != 4:
+        bot.reply_to(
+            m,
+            "Usage: /groupwindow <startHH:MM> <endHH:MM> <count>  (e.g. /groupwindow 09:00 22:00 6)",
+        )
+        return
+
+    _, start_s, end_s, count_s = parts
+    try:
+        count = int(count_s)
+        if not 1 <= count <= 24:
+            raise ValueError
+        # store settings with is_group=1
+        ok = set_user_timer(
+            user_id=m.chat.id,
+            window_start=start_s,
+            window_end=end_s,
+            daily_count=count,
+            tz_offset=0,
+            is_group=1,
+        )
+        if ok:
+            bot.reply_to(
+                m,
+                f"✅ Group will receive {count} pings per day between {start_s}-{end_s} (UTC)",
+            )
+    except Exception:
+        bot.reply_to(m, "Invalid arguments. Example: /groupwindow 09:00 23:00 5")
+
+
+@bot.message_handler(commands=["gdisable", "groupoff"], chat_types=["group", "supergroup"])
+def handle_group_disable(m: Message):
+    """Disable daily group pings."""
+    ok = set_user_timer(
+        user_id=m.chat.id,
+        window_start="00:00",
+        window_end="00:00",
+        daily_count=0,
+        tz_offset=0,
+        is_group=1,
+    )
+    if ok:
+        bot.reply_to(m, "🔕 Group pings disabled.")
+
+# ---------------------------------------------------------------------------
+# Admin alert helper
+# ---------------------------------------------------------------------------
+
+def send_admin_alert(text: str) -> None:
+    """Send a high-priority alert to all configured admins.
+
+    Scott Wilber justification: "Human-in-the-loop escalation catches edge-case failures no metric can."""  # noqa: E501
+    for admin_id in ADMIN_USER_IDS:
+        try:
+            bot.send_message(admin_id, f"🚨 {text}")
+        except Exception as e:
+            logger.error(f"Failed to send admin alert to {admin_id}: {e}") 

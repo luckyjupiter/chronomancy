@@ -108,6 +108,43 @@ WEBAPP_URL=http://localhost:8000/              # Local WebApp testing
 
 ---
 
+## 🪄 Bot Commands & Features
+
+### Personal timers & notifications
+• `/window <start> <end> <N>` — Set your daily random-ping window (24-h `HH:MM`) and number of pings. *Scott Wilber:* “Benign unpredictability prevents anticipatory damping of the signal.”  
+• Interactive **timezone picker** appears automatically after `/window`; stores offset so pings land in your subjective window.  
+• `/schedule` — Show today's generated ping times (debug/dev).  
+• (WebApp) **Mute** — Temporarily silence pings for N hours (`/mute` via API).
+
+### Anomaly scanning
+• Spontaneous **Beacon** pings ask: "Look around: what feels out-of-place?"; reply with text, photos, voice, or docs. *Scott Wilber:* direct phenomenological logging beats rigid forms.  
+• `/future <message>` — Queue a note to be delivered at the next ping (intention setting / self-reminder).
+
+### Profiles & stats
+• `/profile` — View your timer settings, lifetime ping count, and anomaly tally.  
+• `/activity` — Rolling 24-hour histogram of your responses.  
+• `/reports` — List your recent anomaly submissions.  
+• `/export` — GDPR-friendly full data export (CSV).
+
+### Group mode
+• `/groupwindow HH:MM HH:MM N` — Enable pings for a **group chat**; all members see the same Beacon.  
+• `/gdisable` — Turn off group pings.  
+• `/groupstats` — Leaderboard of member response rates.  
+*Scott Wilber:* Collective rhythmic attention amplifies effect-size in MMI studies.
+
+### Donation & premium
+• `/support` or `/pass` — Opens TON transfer deep-link; ≥5 TON mints a **Lifetime PSI Pass** NFT.  
+• Inline "💎 Support with TON" footer follows random pings (max 3 skips before hide).  
+Justification (Scott Wilber): voluntary reciprocity sustains open-science tooling without paywalls.
+
+### Admin / debugging
+• `/poke` — Force-trigger the next alarm for the current chat.  
+• `/testall` — Broadcast test ping to all users (rate-limited).  
+• `/global` — Network-wide aggregate stats.  
+• `/setgroup` — Manually tag a chat as group/private (edge-case recovery).
+
+---
+
 ## Troubleshooting
 
 ### Bot Not Responding
